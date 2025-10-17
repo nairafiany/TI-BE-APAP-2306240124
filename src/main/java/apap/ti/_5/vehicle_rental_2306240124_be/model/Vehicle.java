@@ -2,7 +2,9 @@ package apap.ti._5.vehicle_rental_2306240124_be.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.util.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "vehicle")
@@ -38,21 +40,25 @@ public class Vehicle {
     private String licensePlate;
 
     private Integer capacity;
-
     private String transmission; // Manual / Automatic
-
     private String fuelType; // Bensin / Diesel / Hybrid / Listrik
-
     private Double price;
-
     private String status; // Available / In Use / Unavailable
-
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date createdAt = new Date();
-
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date updatedAt = new Date();
 
     @OneToMany(mappedBy = "vehicle", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<RentalBooking> bookings = new ArrayList<>();
+
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 }

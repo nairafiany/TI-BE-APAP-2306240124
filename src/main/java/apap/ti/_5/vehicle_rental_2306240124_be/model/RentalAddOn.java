@@ -2,7 +2,10 @@ package apap.ti._5.vehicle_rental_2306240124_be.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.util.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "rental_add_on")
@@ -25,9 +28,17 @@ public class RentalAddOn {
     @ManyToMany(mappedBy = "addOns", fetch = FetchType.LAZY)
     private List<RentalBooking> bookings = new ArrayList<>();
 
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date createdAt = new Date();
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date updatedAt = new Date();
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 }

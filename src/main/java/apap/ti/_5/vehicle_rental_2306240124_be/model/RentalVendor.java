@@ -2,7 +2,9 @@ package apap.ti._5.vehicle_rental_2306240124_be.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.util.*; // ← ini penting: Date, List, ArrayList, UUID semua ada di sini
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "rental_vendor")
@@ -30,11 +32,19 @@ public class RentalVendor {
     @Column(name = "location")
     private List<String> listOfLocations = new ArrayList<>();
 
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date createdAt = new Date();
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date updatedAt = new Date();
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 
     @OneToMany(mappedBy = "rentalVendor", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Vehicle> vehicles = new ArrayList<>();
