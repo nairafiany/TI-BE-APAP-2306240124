@@ -1,7 +1,0 @@
-environment:
-  - POSTGRES_USER=vehicle-rental-dev
-  - POSTGRES_PASSWORD=CLI-825.2025X
-  - POSTGRES_DB=vehicle-rental-dev
-
-volumes:
-  - vehicle-rental-db:/var/lib/postgresql/data
