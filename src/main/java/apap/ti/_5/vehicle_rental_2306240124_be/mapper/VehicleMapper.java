@@ -1,19 +1,25 @@
 package apap.ti._5.vehicle_rental_2306240124_be.mapper;
 
 import apap.ti._5.vehicle_rental_2306240124_be.model.Vehicle;
-import apap.ti._5.vehicle_rental_2306240124_be.model.RentalVendor;
-import apap.ti._5.vehicle_rental_2306240124_be.dto.vehicle.*;
+import apap.ti._5.vehicle_rental_2306240124_be.restdto.response.VehicleResponseDTO;
 
 public class VehicleMapper {
 
-    // 🔹 Entity → Response (untuk GET detail)
-    public static VehicleResponse toResponse(Vehicle vehicle) {
+    public static VehicleResponseDTO toResponse(Vehicle vehicle) {
         if (vehicle == null) return null;
 
-        return VehicleResponse.builder()
+        return VehicleResponseDTO.builder()
                 .id(vehicle.getId())
-                .rentalVendorId(vehicle.getRentalVendor().getId())
-                .rentalVendorName(vehicle.getRentalVendor().getName())
+                .rentalVendorId(
+                        vehicle.getRentalVendor() != null
+                                ? vehicle.getRentalVendor().getId()
+                                : null
+                )
+                .rentalVendorName(
+                        vehicle.getRentalVendor() != null
+                                ? vehicle.getRentalVendor().getName()
+                                : null
+                )
                 .type(vehicle.getType())
                 .brand(vehicle.getBrand())
                 .model(vehicle.getModel())
@@ -25,55 +31,8 @@ public class VehicleMapper {
                 .fuelType(vehicle.getFuelType())
                 .price(vehicle.getPrice())
                 .status(vehicle.getStatus())
+                .createdAt(vehicle.getCreatedAt())
+                .updatedAt(vehicle.getUpdatedAt())
                 .build();
-    }
-
-    // 🔹 Entity → List Item (untuk GET all)
-    public static VehicleListItem toListItem(Vehicle vehicle) {
-        if (vehicle == null) return null;
-
-        return VehicleListItem.builder()
-                .id(vehicle.getId())
-                .type(vehicle.getType())
-                .brand(vehicle.getBrand())
-                .model(vehicle.getModel())
-                .capacity(vehicle.getCapacity())
-                .status(vehicle.getStatus())
-                .price(vehicle.getPrice())
-                .build();
-    }
-
-    // 🔹 CreateRequest → Entity
-    public static Vehicle fromCreateRequest(VehicleCreateRequest dto, RentalVendor vendor) {
-        return Vehicle.builder()
-                .rentalVendor(vendor)
-                .type(dto.getType())
-                .brand(dto.getBrand())
-                .model(dto.getModel())
-                .year(dto.getYear())
-                .location(dto.getLocation())
-                .licensePlate(dto.getLicensePlate())
-                .capacity(dto.getCapacity())
-                .transmission(dto.getTransmission())
-                .fuelType(dto.getFuelType())
-                .price(dto.getPrice())
-                .status("Available") // default
-                .build();
-    }
-
-    // 🔹 UpdateRequest → Update Entity
-    public static void updateEntity(Vehicle vehicle, VehicleUpdateRequest dto, RentalVendor vendor) {
-        vehicle.setRentalVendor(vendor);
-        vehicle.setType(dto.getType());
-        vehicle.setBrand(dto.getBrand());
-        vehicle.setModel(dto.getModel());
-        vehicle.setYear(dto.getYear());
-        vehicle.setLocation(dto.getLocation());
-        vehicle.setLicensePlate(dto.getLicensePlate());
-        vehicle.setCapacity(dto.getCapacity());
-        vehicle.setTransmission(dto.getTransmission());
-        vehicle.setFuelType(dto.getFuelType());
-        vehicle.setPrice(dto.getPrice());
-        vehicle.setStatus(dto.getStatus());
     }
 }

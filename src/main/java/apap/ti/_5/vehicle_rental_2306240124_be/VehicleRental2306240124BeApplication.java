@@ -35,7 +35,6 @@ public class VehicleRental2306240124BeApplication {
 
 			System.out.println("🚀 Generating dummy data for Vehicle Rental...");
 
-			// 🧑‍💼 1️⃣ Create Vendors
 			List<RentalVendor> vendors = IntStream.range(0, 3)
 					.mapToObj(i -> RentalVendor.builder()
 							.name(faker.company().name())
@@ -48,7 +47,6 @@ public class VehicleRental2306240124BeApplication {
 					.map(vendorRepository::save)
 					.toList();
 
-			// 🚗 2️⃣ Create Vehicles
 			List<String> types = List.of("Sedan", "SUV", "MPV", "Luxury");
 			List<String> fuels = List.of("Bensin", "Diesel", "Hybrid", "Listrik");
 			List<String> transmissions = List.of("Manual", "Automatic");
@@ -75,7 +73,6 @@ public class VehicleRental2306240124BeApplication {
 				vehicleRepository.save(vehicle);
 			});
 
-			// 🧳 3️⃣ Create Add-Ons
 			List<String> addOnNames = List.of("GPS", "Baby Seat", "WiFi", "Extra Driver", "Insurance");
 
 			addOnNames.forEach(name -> {

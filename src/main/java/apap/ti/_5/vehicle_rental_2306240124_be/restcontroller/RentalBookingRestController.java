@@ -1,118 +1,136 @@
 package apap.ti._5.vehicle_rental_2306240124_be.restcontroller;
 
-import apap.ti._5.vehicle_rental_2306240124_be.dto.booking.*;
-import apap.ti._5.vehicle_rental_2306240124_be.dto.common.BaseResponse;
-import apap.ti._5.vehicle_rental_2306240124_be.mapper.RentalBookingMapper;
-import apap.ti._5.vehicle_rental_2306240124_be.model.RentalBooking;
+import apap.ti._5.vehicle_rental_2306240124_be.restdto.common.BaseResponse;
+import apap.ti._5.vehicle_rental_2306240124_be.restdto.request.rentalbooking.*;
+import apap.ti._5.vehicle_rental_2306240124_be.restdto.response.RentalBookingResponseDTO;
 import apap.ti._5.vehicle_rental_2306240124_be.restservice.RentalBookingRestService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/bookings")
+@RequiredArgsConstructor
 public class RentalBookingRestController {
 
-    @Autowired
-    private RentalBookingRestService rentalBookingRestService;
+    private final RentalBookingRestService rentalBookingRestService;
 
-    // 🔹 GET all bookings
     @GetMapping
-    public ResponseEntity<BaseResponse<List<BookingListItem>>> getAllBookings() {
-        var bookings = rentalBookingRestService.getAllBookings()
-                .stream()
-                .map(RentalBookingMapper::toListItem)
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(BaseResponse.ok(bookings));
-    }
-
-    // 🔹 GET booking by ID
-    @GetMapping("/{id}")
-    public ResponseEntity<BaseResponse<BookingResponse>> getBookingById(@PathVariable String id) {
-        var bookingOpt = rentalBookingRestService.getBookingById(id);
-
-        if (bookingOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(BaseResponse.<BookingResponse>builder()
-                            .status(404)
-                            .message("Booking not found")
-                            .timestamp(OffsetDateTime.now())
-                            .build());
-        }
-
-        var responseData = RentalBookingMapper.toResponse(bookingOpt.get());
-        return ResponseEntity.ok(BaseResponse.ok(responseData));
-    }
-
-    // 🔹 CREATE booking
-    @PostMapping
-    public ResponseEntity<BaseResponse<BookingResponse>> createBooking(@RequestBody BookingCreateRequest dto) {
-        var entity = RentalBookingMapper.fromCreateRequest(dto);
-        var saved = rentalBookingRestService.createBooking(entity);
-
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(BaseResponse.<BookingResponse>builder()
-                        .status(201)
-                        .message("Booking successfully created")
-                        .timestamp(OffsetDateTime.now())
-                        .data(RentalBookingMapper.toResponse(saved))
-                        .build());
-    }
-
-    // 🔹 UPDATE booking
-    @PutMapping("/{id}")
-    public ResponseEntity<BaseResponse<BookingResponse>> updateBooking(
-            @PathVariable String id,
-            @RequestBody BookingUpdateRequest dto
-    ) {
-        var bookingOpt = rentalBookingRestService.getBookingById(id);
-
-        if (bookingOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(BaseResponse.<BookingResponse>builder()
-                            .status(404)
-                            .message("Booking not found")
-                            .timestamp(OffsetDateTime.now())
-                            .build());
-        }
-
-        var booking = bookingOpt.get();
-        RentalBookingMapper.updateEntity(booking, dto);
-        var updated = rentalBookingRestService.updateBooking(booking);
-
-        return ResponseEntity.ok(BaseResponse.<BookingResponse>builder()
-                .status(200)
-                .message("Booking successfully updated")
+    public ResponseEntity<BaseResponse<List<RentalBookingResponseDTO>>> getAllBookings() {
+        var bookings = rentalBookingRestService.getAllBookings();
+        return ResponseEntity.ok(
+            BaseResponse.<List<RentalBookingResponseDTO>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Success fetching all rental bookings")
                 .timestamp(OffsetDateTime.now())
-                .data(RentalBookingMapper.toResponse(updated))
+                .data(bookings)
+                .build()
+        );
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<BaseResponse<RentalBookingResponseDTO>> getBookingById(@PathVariable String id) {
+        var booking = rentalBookingRestService.getBookingById(id);
+        if (booking == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(BaseResponse.<RentalBookingResponseDTO>builder()
+                    .status(404)
+                    .message("Rental booking not found")
+                    .timestamp(OffsetDateTime.now())
+                    .build());
+        }
+
+        return ResponseEntity.ok(
+            BaseResponse.<RentalBookingResponseDTO>builder()
+                .status(200)
+                .message("Success fetching rental booking detail")
+                .timestamp(OffsetDateTime.now())
+                .data(booking)
+                .build()
+        );
+    }
+
+    @PostMapping
+    public ResponseEntity<BaseResponse<RentalBookingResponseDTO>> createBooking(
+            @Valid @RequestBody RentalBookingCreateRequestDTO request) {
+        var created = rentalBookingRestService.createBooking(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(BaseResponse.<RentalBookingResponseDTO>builder()
+                .status(201)
+                .message("Rental booking successfully created")
+                .timestamp(OffsetDateTime.now())
+                .data(created)
                 .build());
     }
 
-    // 🔹 DELETE booking
+    @PutMapping("/{id}/update-details")
+    public ResponseEntity<BaseResponse<RentalBookingResponseDTO>> updateBookingDetails(
+            @PathVariable String id,
+            @Valid @RequestBody RentalBookingUpdateDetailsRequestDTO request) {
+        var updated = rentalBookingRestService.updateBookingDetails(id, request);
+        return ResponseEntity.ok(
+            BaseResponse.<RentalBookingResponseDTO>builder()
+                .status(200)
+                .message("Rental booking details successfully updated")
+                .timestamp(OffsetDateTime.now())
+                .data(updated)
+                .build());
+    }
+
+    @PutMapping("/{id}/update-status")
+    public ResponseEntity<BaseResponse<RentalBookingResponseDTO>> updateBookingStatus(
+            @PathVariable String id,
+            @Valid @RequestBody RentalBookingUpdateStatusRequestDTO request) {
+        var updated = rentalBookingRestService.updateBookingStatus(id, request);
+        return ResponseEntity.ok(
+            BaseResponse.<RentalBookingResponseDTO>builder()
+                .status(200)
+                .message("Rental booking status successfully updated")
+                .timestamp(OffsetDateTime.now())
+                .data(updated)
+                .build());
+    }
+
+    @PutMapping("/{id}/update-addons")
+    public ResponseEntity<BaseResponse<RentalBookingResponseDTO>> updateBookingAddOns(
+            @PathVariable String id,
+            @Valid @RequestBody RentalBookingUpdateAddOnsRequestDTO request) {
+        var updated = rentalBookingRestService.updateBookingAddOns(id, request);
+        return ResponseEntity.ok(
+            BaseResponse.<RentalBookingResponseDTO>builder()
+                .status(200)
+                .message("Rental booking add-ons successfully updated")
+                .timestamp(OffsetDateTime.now())
+                .data(updated)
+                .build());
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<BaseResponse<Void>> deleteBooking(@PathVariable String id) {
-        var bookingOpt = rentalBookingRestService.getBookingById(id);
-
-        if (bookingOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(BaseResponse.<Void>builder()
-                            .status(404)
-                            .message("Booking not found")
-                            .timestamp(OffsetDateTime.now())
-                            .build());
-        }
-
         rentalBookingRestService.deleteBooking(id);
-        return ResponseEntity.ok(BaseResponse.<Void>builder()
+        return ResponseEntity.ok(
+            BaseResponse.<Void>builder()
                 .status(200)
-                .message("Booking successfully deleted")
+                .message("Rental booking successfully cancelled (soft deleted)")
                 .timestamp(OffsetDateTime.now())
+                .build());
+    }
+
+    @GetMapping("/chart")
+    public ResponseEntity<BaseResponse<List<BookingChartPointDTO>>> getBookingStatistics(
+            @RequestParam String period,
+            @RequestParam Integer year) {
+        var stats = rentalBookingRestService.getBookingStatistics(period, year);
+        return ResponseEntity.ok(
+            BaseResponse.<List<BookingChartPointDTO>>builder()
+                .status(200)
+                .message("Success fetching booking statistics")
+                .timestamp(OffsetDateTime.now())
+                .data(stats)
                 .build());
     }
 }

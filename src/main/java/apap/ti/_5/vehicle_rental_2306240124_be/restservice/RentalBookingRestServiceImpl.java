@@ -1,41 +1,190 @@
 package apap.ti._5.vehicle_rental_2306240124_be.restservice;
 
-import apap.ti._5.vehicle_rental_2306240124_be.model.RentalBooking;
-import apap.ti._5.vehicle_rental_2306240124_be.repository.RentalBookingRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import apap.ti._5.vehicle_rental_2306240124_be.mapper.RentalBookingMapper;
+import apap.ti._5.vehicle_rental_2306240124_be.model.*;
+import apap.ti._5.vehicle_rental_2306240124_be.repository.*;
+import apap.ti._5.vehicle_rental_2306240124_be.restdto.request.rentalbooking.*;
+import apap.ti._5.vehicle_rental_2306240124_be.restdto.response.RentalBookingResponseDTO;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Optional;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
+@Transactional
 public class RentalBookingRestServiceImpl implements RentalBookingRestService {
 
-    @Autowired
-    private RentalBookingRepository rentalBookingRepository;
+    private final RentalBookingRepository rentalBookingRepository;
+    private final VehicleRepository vehicleRepository;
+    private final RentalAddOnRepository rentalAddOnRepository;
 
     @Override
-    public List<RentalBooking> getAllBookings() {
-        return rentalBookingRepository.findAll();
+    public List<RentalBookingResponseDTO> getAllBookings() {
+        return rentalBookingRepository.findAllByOrderByCreatedAtDesc()
+                .stream()
+                .map(RentalBookingMapper::toResponse)
+                .collect(Collectors.toList());
     }
 
-    @Override
-    public Optional<RentalBooking> getBookingById(String id) {
-        return rentalBookingRepository.findById(id);
-    }
 
     @Override
-    public RentalBooking createBooking(RentalBooking booking) {
-        return rentalBookingRepository.save(booking);
+    public RentalBookingResponseDTO getBookingById(String id) {
+        var booking = rentalBookingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+        return RentalBookingMapper.toResponse(booking);
     }
 
+ 
     @Override
-    public RentalBooking updateBooking(RentalBooking booking) {
-        return rentalBookingRepository.save(booking);
+    public RentalBookingResponseDTO createBooking(RentalBookingCreateRequestDTO request) {
+        var vehicle = vehicleRepository.findById(request.getVehicleId())
+                .orElseThrow(() -> new RuntimeException("Vehicle not found"));
+
+        long rentalDays = Math.max(1, ChronoUnit.DAYS.between(request.getPickUpTime(), request.getDropOffTime()));
+
+        double totalPrice = rentalDays * vehicle.getPrice();
+
+        if (Boolean.TRUE.equals(request.getIncludeDriver())) {
+            totalPrice += rentalDays * 100_000;
+        }
+
+        List<RentalAddOn> addOns = new ArrayList<>();
+        if (request.getAddOnIds() != null && !request.getAddOnIds().isEmpty()) {
+            addOns = rentalAddOnRepository.findAllById(request.getAddOnIds());
+            totalPrice += addOns.stream().mapToDouble(RentalAddOn::getPrice).sum();
+        }
+
+        long count = rentalBookingRepository.count() + 1;
+        String id = String.format("VR%06d", count);
+
+        var entity = RentalBookingMapper.fromCreateRequest(request);
+        entity.setId(id);
+        entity.setVehicle(vehicle);
+        entity.setAddOns(addOns);
+        entity.setTotalPrice(totalPrice);
+        entity.setStatus("Upcoming");
+
+        rentalBookingRepository.save(entity);
+        return RentalBookingMapper.toResponse(entity);
     }
+
+
+    @Override
+    public RentalBookingResponseDTO updateBookingDetails(String id, RentalBookingUpdateDetailsRequestDTO request) {
+        var booking = rentalBookingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        if (!"Upcoming".equalsIgnoreCase(booking.getStatus())) {
+            throw new RuntimeException("Cannot update booking details. Status must be Upcoming.");
+        }
+
+        booking.setPickUpTime(request.getPickUpTime());
+        booking.setDropOffTime(request.getDropOffTime());
+        booking.setPickUpLocation(request.getPickUpLocation());
+        booking.setDropOffLocation(request.getDropOffLocation());
+        booking.setCapacityNeeded(request.getCapacityNeeded());
+        booking.setTransmissionNeeded(request.getTransmissionNeeded());
+        booking.setIncludeDriver(request.getIncludeDriver());
+
+        long rentalDays = Math.max(1, ChronoUnit.DAYS.between(request.getPickUpTime(), request.getDropOffTime()));
+        double totalPrice = rentalDays * booking.getVehicle().getPrice();
+        if (Boolean.TRUE.equals(request.getIncludeDriver())) totalPrice += rentalDays * 100_000;
+        totalPrice += booking.getAddOns().stream().mapToDouble(RentalAddOn::getPrice).sum();
+
+        booking.setTotalPrice(totalPrice);
+        booking.setUpdatedAt(java.time.LocalDateTime.now());
+
+        rentalBookingRepository.save(booking);
+        return RentalBookingMapper.toResponse(booking);
+    }
+
+  
+    @Override
+    public RentalBookingResponseDTO updateBookingStatus(String id, RentalBookingUpdateStatusRequestDTO request) {
+        var booking = rentalBookingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        String newStatus = request.getStatus();
+
+        if ("Upcoming".equalsIgnoreCase(booking.getStatus()) && "Ongoing".equalsIgnoreCase(newStatus)) {
+            if (LocalDate.now().isBefore(booking.getPickUpTime())) {
+                throw new RuntimeException("Cannot start booking before pick-up date.");
+            }
+            booking.setStatus("Ongoing");
+            booking.getVehicle().setStatus("In Use");
+        } else if ("Ongoing".equalsIgnoreCase(booking.getStatus()) && "Done".equalsIgnoreCase(newStatus)) {
+            booking.setStatus("Done");
+            booking.getVehicle().setStatus("Available");
+
+            if (LocalDate.now().isAfter(booking.getDropOffTime())) {
+                long hoursLate = ChronoUnit.HOURS.between(
+                        booking.getDropOffTime().atStartOfDay(), LocalDate.now().atStartOfDay());
+                long roundedLateHours = Math.max(1, hoursLate);
+                double penalty = 20_000 * roundedLateHours;
+                booking.setTotalPrice(booking.getTotalPrice() + penalty);
+            }
+
+        } else {
+            throw new RuntimeException("Invalid status transition.");
+        }
+
+        booking.setUpdatedAt(java.time.LocalDateTime.now());
+        rentalBookingRepository.save(booking);
+        return RentalBookingMapper.toResponse(booking);
+    }
+
+ 
+    @Override
+    public RentalBookingResponseDTO updateBookingAddOns(String id, RentalBookingUpdateAddOnsRequestDTO request) {
+        var booking = rentalBookingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        if (!"Upcoming".equalsIgnoreCase(booking.getStatus())) {
+            throw new RuntimeException("Cannot update add-ons. Status must be Upcoming.");
+        }
+
+        var addOns = rentalAddOnRepository.findAllById(request.getAddOnIds());
+        booking.setAddOns(addOns);
+
+        long rentalDays = Math.max(1, ChronoUnit.DAYS.between(booking.getPickUpTime(), booking.getDropOffTime()));
+        double totalPrice = rentalDays * booking.getVehicle().getPrice();
+        if (Boolean.TRUE.equals(booking.getIncludeDriver())) totalPrice += rentalDays * 100_000;
+        totalPrice += addOns.stream().mapToDouble(RentalAddOn::getPrice).sum();
+
+        booking.setTotalPrice(totalPrice);
+        booking.setUpdatedAt(java.time.LocalDateTime.now());
+
+        rentalBookingRepository.save(booking);
+        return RentalBookingMapper.toResponse(booking);
+    }
+
 
     @Override
     public void deleteBooking(String id) {
-        rentalBookingRepository.deleteById(id);
+        var booking = rentalBookingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        if (!"Upcoming".equalsIgnoreCase(booking.getStatus())) {
+            throw new RuntimeException("Only Upcoming bookings can be cancelled.");
+        }
+
+        booking.setStatus("Done");
+        booking.setTotalPrice(0.0);
+        booking.getVehicle().setStatus("Available");
+        booking.setUpdatedAt(java.time.LocalDateTime.now());
+
+        rentalBookingRepository.save(booking);
+    }
+
+ 
+    @Override
+    public List<BookingChartPointDTO> getBookingStatistics(String period, Integer year) {
+        // dummy implementation for now, to be filled later
+        return Collections.emptyList();
     }
 }

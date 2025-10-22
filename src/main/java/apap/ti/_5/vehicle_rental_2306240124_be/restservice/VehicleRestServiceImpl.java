@@ -1,11 +1,13 @@
 package apap.ti._5.vehicle_rental_2306240124_be.restservice;
 
-import apap.ti._5.vehicle_rental_2306240124_be.dto.vehicle.*;
 import apap.ti._5.vehicle_rental_2306240124_be.mapper.VehicleMapper;
 import apap.ti._5.vehicle_rental_2306240124_be.model.*;
 import apap.ti._5.vehicle_rental_2306240124_be.repository.*;
+import apap.ti._5.vehicle_rental_2306240124_be.restdto.request.vehicle.VehicleCreateRequestDTO;
+import apap.ti._5.vehicle_rental_2306240124_be.restdto.response.VehicleResponseDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -19,7 +21,7 @@ public class VehicleRestServiceImpl implements VehicleRestService {
     private RentalVendorRepository vendorRepository;
 
     @Override
-    public List<VehicleResponse> getAllVehicles() {
+    public List<VehicleResponseDTO> getAllVehicles() {
         return vehicleRepository.findAll()
                 .stream()
                 .map(VehicleMapper::toResponse)
@@ -27,20 +29,22 @@ public class VehicleRestServiceImpl implements VehicleRestService {
     }
 
     @Override
-    public VehicleResponse getVehicleById(String id) {
-        return vehicleRepository.findById(id)
-                .map(VehicleMapper::toResponse)
-                .orElse(null);
+    public VehicleResponseDTO getVehicleById(String id) {
+        var vehicle = vehicleRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + id));
+
+        return VehicleMapper.toResponse(vehicle);
     }
 
     @Override
-    public VehicleResponse createVehicle(VehicleCreateRequest request) {
+    public VehicleResponseDTO createVehicle(VehicleCreateRequestDTO request) {
         var vendor = vendorRepository.findById(request.getRentalVendorId())
-                .orElseThrow(() -> new RuntimeException("Vendor not found"));
+                .orElseThrow(() -> new RuntimeException("Vendor not found with id: " + request.getRentalVendorId()));
 
+        String vehicleId = "VEH" + String.format("%04d", vehicleRepository.count() + 1);
 
         var vehicle = Vehicle.builder()
-                .id(UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                .id(vehicleId)
                 .rentalVendor(vendor)
                 .type(request.getType())
                 .brand(request.getBrand())
@@ -55,30 +59,34 @@ public class VehicleRestServiceImpl implements VehicleRestService {
                 .status("Available")
                 .build();
 
-        return VehicleMapper.toResponse(vehicleRepository.save(vehicle));
+        var saved = vehicleRepository.save(vehicle);
+        return VehicleMapper.toResponse(saved);
     }
 
     @Override
-    public VehicleResponse updateVehicle(String id, VehicleUpdateRequest request) {
+    public VehicleResponseDTO updateVehicle(String id, VehicleCreateRequestDTO request) {
         var vehicle = vehicleRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Vehicle not found"));
+                .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + id));
 
         vehicle.setType(request.getType());
         vehicle.setBrand(request.getBrand());
         vehicle.setModel(request.getModel());
         vehicle.setYear(request.getYear());
         vehicle.setLocation(request.getLocation());
+        vehicle.setLicensePlate(request.getLicensePlate());
         vehicle.setCapacity(request.getCapacity());
         vehicle.setTransmission(request.getTransmission());
         vehicle.setFuelType(request.getFuelType());
         vehicle.setPrice(request.getPrice());
-        vehicle.setStatus(request.getStatus());
 
-        return VehicleMapper.toResponse(vehicleRepository.save(vehicle));
+        var updated = vehicleRepository.save(vehicle);
+        return VehicleMapper.toResponse(updated);
     }
 
     @Override
     public void deleteVehicle(String id) {
-        vehicleRepository.deleteById(id);
+        var vehicle = vehicleRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + id));
+        vehicleRepository.delete(vehicle);
     }
 }

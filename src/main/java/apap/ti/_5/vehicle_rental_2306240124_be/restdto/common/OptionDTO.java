@@ -1,4 +1,4 @@
-package apap.ti._5.vehicle_rental_2306240124_be.dto.common;
+package apap.ti._5.vehicle_rental_2306240124_be.restdto.common;
 
 import lombok.*;
 

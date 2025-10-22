@@ -1,11 +1,15 @@
 package apap.ti._5.vehicle_rental_2306240124_be.restcontroller;
 
-import apap.ti._5.vehicle_rental_2306240124_be.dto.vehicle.*;
-import apap.ti._5.vehicle_rental_2306240124_be.dto.common.BaseResponse;
+import apap.ti._5.vehicle_rental_2306240124_be.restdto.common.BaseResponse;
+import apap.ti._5.vehicle_rental_2306240124_be.restdto.request.vehicle.VehicleCreateRequestDTO;
+import apap.ti._5.vehicle_rental_2306240124_be.restdto.response.VehicleResponseDTO;
 import apap.ti._5.vehicle_rental_2306240124_be.restservice.VehicleRestService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -16,65 +20,98 @@ public class VehicleRestController {
     @Autowired
     private VehicleRestService vehicleRestService;
 
-    // 🔹 GET All Vehicles
     @GetMapping
-    public BaseResponse<List<VehicleResponse>> getAllVehicles() {
-        var data = vehicleRestService.getAllVehicles();
-        return BaseResponse.<List<VehicleResponse>>builder()
-                .status(200)
-                .message("Success get all vehicles")
-                .timestamp(OffsetDateTime.now())
-                .data(data)
-                .build();
+    public ResponseEntity<BaseResponse<List<VehicleResponseDTO>>> getAllVehicles() {
+        var vehicles = vehicleRestService.getAllVehicles();
+        return ResponseEntity.ok(
+                BaseResponse.<List<VehicleResponseDTO>>builder()
+                        .status(200)
+                        .message("Success fetching all vehicles")
+                        .timestamp(OffsetDateTime.now())
+                        .data(vehicles)
+                        .build()
+        );
     }
 
-    // 🔹 GET Vehicle by ID
     @GetMapping("/{id}")
-    public BaseResponse<VehicleResponse> getVehicleById(@PathVariable String id) {
-        var data = vehicleRestService.getVehicleById(id);
-        return BaseResponse.<VehicleResponse>builder()
-                .status(data != null ? 200 : 404)
-                .message(data != null ? "Success get vehicle" : "Vehicle not found")
-                .timestamp(OffsetDateTime.now())
-                .data(data)
-                .build();
+    public ResponseEntity<BaseResponse<VehicleResponseDTO>> getVehicleById(@PathVariable String id) {
+        try {
+            var vehicle = vehicleRestService.getVehicleById(id);
+            return ResponseEntity.ok(
+                    BaseResponse.<VehicleResponseDTO>builder()
+                            .status(200)
+                            .message("Vehicle found")
+                            .timestamp(OffsetDateTime.now())
+                            .data(vehicle)
+                            .build()
+            );
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(BaseResponse.<VehicleResponseDTO>builder()
+                            .status(404)
+                            .message(e.getMessage())
+                            .timestamp(OffsetDateTime.now())
+                            .build());
+        }
     }
 
-    // 🔹 POST Create Vehicle
     @PostMapping
-    public BaseResponse<VehicleResponse> createVehicle(@RequestBody VehicleCreateRequest request) {
-        var data = vehicleRestService.createVehicle(request);
-        return BaseResponse.<VehicleResponse>builder()
-                .status(201)
-                .message("Vehicle created successfully")
-                .timestamp(OffsetDateTime.now())
-                .data(data)
-                .build();
-    }
-
-    // 🔹 PUT Update Vehicle
-    @PutMapping("/{id}")
-    public BaseResponse<VehicleResponse> updateVehicle(
-            @PathVariable String id,
-            @RequestBody VehicleUpdateRequest request
+    public ResponseEntity<BaseResponse<VehicleResponseDTO>> createVehicle(
+            @Valid @RequestBody VehicleCreateRequestDTO request
     ) {
-        var data = vehicleRestService.updateVehicle(id, request);
-        return BaseResponse.<VehicleResponse>builder()
-                .status(200)
-                .message("Vehicle updated successfully")
-                .timestamp(OffsetDateTime.now())
-                .data(data)
-                .build();
+        var created = vehicleRestService.createVehicle(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(BaseResponse.<VehicleResponseDTO>builder()
+                        .status(201)
+                        .message("Vehicle successfully created")
+                        .timestamp(OffsetDateTime.now())
+                        .data(created)
+                        .build());
     }
 
-    // 🔹 DELETE Vehicle
+    @PutMapping("/{id}")
+    public ResponseEntity<BaseResponse<VehicleResponseDTO>> updateVehicle(
+            @PathVariable String id,
+            @Valid @RequestBody VehicleCreateRequestDTO request
+    ) {
+        try {
+            var updated = vehicleRestService.updateVehicle(id, request);
+            return ResponseEntity.ok(
+                    BaseResponse.<VehicleResponseDTO>builder()
+                            .status(200)
+                            .message("Vehicle successfully updated")
+                            .timestamp(OffsetDateTime.now())
+                            .data(updated)
+                            .build()
+            );
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(BaseResponse.<VehicleResponseDTO>builder()
+                            .status(404)
+                            .message(e.getMessage())
+                            .timestamp(OffsetDateTime.now())
+                            .build());
+        }
+    }
+
     @DeleteMapping("/{id}")
-    public BaseResponse<Void> deleteVehicle(@PathVariable String id) {
-        vehicleRestService.deleteVehicle(id);
-        return BaseResponse.<Void>builder()
-                .status(200)
-                .message("Vehicle deleted successfully")
-                .timestamp(OffsetDateTime.now())
-                .build();
+    public ResponseEntity<BaseResponse<Void>> deleteVehicle(@PathVariable String id) {
+        try {
+            vehicleRestService.deleteVehicle(id);
+            return ResponseEntity.ok(
+                    BaseResponse.<Void>builder()
+                            .status(200)
+                            .message("Vehicle successfully deleted")
+                            .timestamp(OffsetDateTime.now())
+                            .build()
+            );
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(BaseResponse.<Void>builder()
+                            .status(404)
+                            .message(e.getMessage())
+                            .timestamp(OffsetDateTime.now())
+                            .build());
+        }
     }
 }
