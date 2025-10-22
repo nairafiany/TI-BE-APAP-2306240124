@@ -7,13 +7,12 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+@Data
 @Entity
 @Table(name = "rental_booking")
-@Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Builder(toBuilder = true)
 public class RentalBooking {
     @Id
     private String id; // format: VRxxxxxx
@@ -34,6 +33,7 @@ public class RentalBooking {
     private Double totalPrice;
     private String status; // Upcoming / Ongoing / Done
 
+    @Builder.Default
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "booking_add_ons",
@@ -41,6 +41,7 @@ public class RentalBooking {
         inverseJoinColumns = @JoinColumn(name = "addon_id")
     )
     private List<RentalAddOn> addOns = new ArrayList<>();
+
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

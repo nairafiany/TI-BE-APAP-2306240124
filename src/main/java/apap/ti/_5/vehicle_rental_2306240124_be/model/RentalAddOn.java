@@ -7,13 +7,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+@Data
 @Entity
 @Table(name = "rental_add_on")
-@Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Builder(toBuilder = true)
 public class RentalAddOn {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -25,8 +24,10 @@ public class RentalAddOn {
     @Column(nullable = false)
     private Double price;
 
+    @Builder.Default
     @ManyToMany(mappedBy = "addOns", fetch = FetchType.LAZY)
     private List<RentalBooking> bookings = new ArrayList<>();
+
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

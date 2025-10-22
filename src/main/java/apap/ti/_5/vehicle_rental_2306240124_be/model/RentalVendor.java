@@ -6,13 +6,12 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+@Data
 @Entity
 @Table(name = "rental_vendor")
-@Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Builder(toBuilder = true)
 public class RentalVendor {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,6 +26,7 @@ public class RentalVendor {
     @Column(nullable = false)
     private String phone;
 
+    @Builder.Default
     @ElementCollection
     @CollectionTable(name = "vendor_locations", joinColumns = @JoinColumn(name = "vendor_id"))
     @Column(name = "location")

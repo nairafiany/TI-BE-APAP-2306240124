@@ -6,13 +6,12 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+@Data
 @Entity
 @Table(name = "vehicle")
-@Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Builder(toBuilder = true)
 public class Vehicle {
     @Id
     private String id; // format: VEHxxxx
@@ -45,8 +44,10 @@ public class Vehicle {
     private Double price;
     private String status; // Available / In Use / Unavailable
 
+    @Builder.Default
     @OneToMany(mappedBy = "vehicle", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<RentalBooking> bookings = new ArrayList<>();
+
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
