@@ -56,4 +56,7 @@ public class RentalBooking {
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+
+    private LocalDateTime deletedAt;
+
 }

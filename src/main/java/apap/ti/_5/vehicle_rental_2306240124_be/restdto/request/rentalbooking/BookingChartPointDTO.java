@@ -7,6 +7,6 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class BookingChartPointDTO {
-    private String label;  // e.g., "January" or "Q1"
-    private Long totalBookings;
+    private String label; // e.g. "January" or "Q1"
+    private Long total;   // total bookings in that period
 }

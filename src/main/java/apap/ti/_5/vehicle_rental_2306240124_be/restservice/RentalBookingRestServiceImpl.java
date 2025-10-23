@@ -7,9 +7,13 @@ import apap.ti._5.vehicle_rental_2306240124_be.restdto.request.rentalbooking.*;
 import apap.ti._5.vehicle_rental_2306240124_be.restdto.response.RentalBookingResponseDTO;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -25,7 +29,7 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
 
     @Override
     public List<RentalBookingResponseDTO> getAllBookings() {
-        return rentalBookingRepository.findAllByOrderByCreatedAtDesc()
+        return rentalBookingRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()
                 .stream()
                 .map(RentalBookingMapper::toResponse)
                 .collect(Collectors.toList());
@@ -34,16 +38,17 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
 
     @Override
     public RentalBookingResponseDTO getBookingById(String id) {
-        var booking = rentalBookingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
+        var booking = rentalBookingRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found or has been deleted"));
         return RentalBookingMapper.toResponse(booking);
     }
+
 
  
     @Override
     public RentalBookingResponseDTO createBooking(RentalBookingCreateRequestDTO request) {
         var vehicle = vehicleRepository.findById(request.getVehicleId())
-                .orElseThrow(() -> new RuntimeException("Vehicle not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vehicle not found"));
 
         long rentalDays = Math.max(1, ChronoUnit.DAYS.between(request.getPickUpTime(), request.getDropOffTime()));
 
@@ -76,11 +81,11 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
 
     @Override
     public RentalBookingResponseDTO updateBookingDetails(String id, RentalBookingUpdateDetailsRequestDTO request) {
-        var booking = rentalBookingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
-
+    var booking = rentalBookingRepository.findByIdAndDeletedAtIsNull(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found or has been deleted"));
         if (!"Upcoming".equalsIgnoreCase(booking.getStatus())) {
-            throw new RuntimeException("Cannot update booking details. Status must be Upcoming.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Cannot update booking details. Status must be Upcoming.");
         }
 
         booking.setPickUpTime(request.getPickUpTime());
@@ -106,17 +111,20 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
   
     @Override
     public RentalBookingResponseDTO updateBookingStatus(String id, RentalBookingUpdateStatusRequestDTO request) {
-        var booking = rentalBookingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
+        var booking = rentalBookingRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() ->
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
 
         String newStatus = request.getStatus();
 
         if ("Upcoming".equalsIgnoreCase(booking.getStatus()) && "Ongoing".equalsIgnoreCase(newStatus)) {
             if (LocalDate.now().isBefore(booking.getPickUpTime())) {
-                throw new RuntimeException("Cannot start booking before pick-up date.");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Cannot start booking before pick-up date.");
             }
             booking.setStatus("Ongoing");
             booking.getVehicle().setStatus("In Use");
+
         } else if ("Ongoing".equalsIgnoreCase(booking.getStatus()) && "Done".equalsIgnoreCase(newStatus)) {
             booking.setStatus("Done");
             booking.getVehicle().setStatus("Available");
@@ -130,22 +138,24 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
             }
 
         } else {
-            throw new RuntimeException("Invalid status transition.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Invalid status transition.");
         }
 
         booking.setUpdatedAt(java.time.LocalDateTime.now());
         rentalBookingRepository.save(booking);
         return RentalBookingMapper.toResponse(booking);
     }
-
  
     @Override
     public RentalBookingResponseDTO updateBookingAddOns(String id, RentalBookingUpdateAddOnsRequestDTO request) {
-        var booking = rentalBookingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
+        var booking = rentalBookingRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() ->
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
 
         if (!"Upcoming".equalsIgnoreCase(booking.getStatus())) {
-            throw new RuntimeException("Cannot update add-ons. Status must be Upcoming.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Cannot update add-ons. Status must be Upcoming.");
         }
 
         var addOns = rentalAddOnRepository.findAllById(request.getAddOnIds());
@@ -164,27 +174,92 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
     }
 
 
+
     @Override
     public void deleteBooking(String id) {
-        var booking = rentalBookingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
+        var booking = rentalBookingRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() ->
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
 
         if (!"Upcoming".equalsIgnoreCase(booking.getStatus())) {
-            throw new RuntimeException("Only Upcoming bookings can be cancelled.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Only Upcoming bookings can be cancelled.");
         }
 
+        boolean beforePickup = LocalDate.now().isBefore(booking.getPickUpTime());
+        if (beforePickup) booking.setTotalPrice(0.0);
+
         booking.setStatus("Done");
-        booking.setTotalPrice(0.0);
         booking.getVehicle().setStatus("Available");
-        booking.setUpdatedAt(java.time.LocalDateTime.now());
+        booking.setUpdatedAt(LocalDateTime.now());
+        booking.setDeletedAt(LocalDateTime.now()); 
 
         rentalBookingRepository.save(booking);
     }
 
+
+
  
     @Override
     public List<BookingChartPointDTO> getBookingStatistics(String period, Integer year) {
-        // dummy implementation for now, to be filled later
-        return Collections.emptyList();
+        // Ambil semua booking dalam tahun tersebut
+        var bookings = rentalBookingRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()
+                .stream()
+                .filter(b -> b.getCreatedAt() != null && b.getCreatedAt().getYear() == year)
+                .toList();
+
+        if (bookings.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<BookingChartPointDTO> results = new ArrayList<>();
+
+        if ("monthly".equalsIgnoreCase(period)) {
+            for (int month = 1; month <= 12; month++) {
+                final int currentMonth = month; 
+
+                long count = bookings.stream()
+                        .filter(b -> b.getCreatedAt().getMonthValue() == currentMonth)
+                        .count();
+
+                String monthName = java.time.Month.of(currentMonth)
+                        .name()
+                        .substring(0, 1)
+                        .toUpperCase() + java.time.Month.of(currentMonth)
+                        .name()
+                        .substring(1)
+                        .toLowerCase();
+
+                results.add(BookingChartPointDTO.builder()
+                        .label(monthName)
+                        .total(count)
+                        .build());
+            }
+
+        } else if ("quarterly".equalsIgnoreCase(period)) {
+            for (int q = 1; q <= 4; q++) {
+                int startMonth = (q - 1) * 3 + 1;
+                int endMonth = q * 3;
+
+                long count = bookings.stream()
+                        .filter(b -> {
+                            int m = b.getCreatedAt().getMonthValue();
+                            return m >= startMonth && m <= endMonth;
+                        })
+                        .count();
+
+                results.add(BookingChartPointDTO.builder()
+                        .label("Q" + q)
+                        .total(count)
+                        .build());
+            }
+
+        } else {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Invalid period. Use 'monthly' or 'quarterly'.");
+        }
+
+        return results;
     }
+
 }
