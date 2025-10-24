@@ -1,5 +1,6 @@
 package apap.ti._5.vehicle_rental_2306240124_be.restservice;
 
+import apap.ti._5.vehicle_rental_2306240124_be.enums.VehicleStatus;
 import apap.ti._5.vehicle_rental_2306240124_be.mapper.RentalBookingMapper;
 import apap.ti._5.vehicle_rental_2306240124_be.model.*;
 import apap.ti._5.vehicle_rental_2306240124_be.repository.*;
@@ -50,6 +51,24 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
         var vehicle = vehicleRepository.findById(request.getVehicleId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vehicle not found"));
 
+        if (request.getDropOffTime().isBefore(request.getPickUpTime())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Drop-off date cannot be before pick-up date.");
+        }
+
+        // validasi lagi
+        // if (request.getPickUpTime().isBefore(LocalDate.now())) {
+        //     throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+        //             "Pick-up date cannot be in the past.");
+        // }
+
+        if (request.getCapacityNeeded() > vehicle.getCapacity()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Requested capacity exceeds vehicle capacity.");
+        }
+
+
+
         long rentalDays = Math.max(1, ChronoUnit.DAYS.between(request.getPickUpTime(), request.getDropOffTime()));
 
         double totalPrice = rentalDays * vehicle.getPrice();
@@ -77,6 +96,7 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
         rentalBookingRepository.save(entity);
         return RentalBookingMapper.toResponse(entity);
     }
+
 
 
     @Override
@@ -123,11 +143,11 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
                         "Cannot start booking before pick-up date.");
             }
             booking.setStatus("Ongoing");
-            booking.getVehicle().setStatus("In Use");
+            booking.getVehicle().setStatus(VehicleStatus.IN_USE);
 
         } else if ("Ongoing".equalsIgnoreCase(booking.getStatus()) && "Done".equalsIgnoreCase(newStatus)) {
             booking.setStatus("Done");
-            booking.getVehicle().setStatus("Available");
+            booking.getVehicle().setStatus(VehicleStatus.AVAILABLE);
 
             if (LocalDate.now().isAfter(booking.getDropOffTime())) {
                 long hoursLate = ChronoUnit.HOURS.between(
@@ -190,7 +210,7 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
         if (beforePickup) booking.setTotalPrice(0.0);
 
         booking.setStatus("Done");
-        booking.getVehicle().setStatus("Available");
+        booking.getVehicle().setStatus(VehicleStatus.AVAILABLE);
         booking.setUpdatedAt(LocalDateTime.now());
         booking.setDeletedAt(LocalDateTime.now()); 
 

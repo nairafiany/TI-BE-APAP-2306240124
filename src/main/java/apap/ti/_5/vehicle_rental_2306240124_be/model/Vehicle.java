@@ -6,6 +6,11 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import apap.ti._5.vehicle_rental_2306240124_be.enums.FuelType;
+import apap.ti._5.vehicle_rental_2306240124_be.enums.TransmissionType;
+import apap.ti._5.vehicle_rental_2306240124_be.enums.VehicleStatus;
+import apap.ti._5.vehicle_rental_2306240124_be.enums.VehicleType;
+
 @Data
 @Entity
 @Table(name = "vehicle")
@@ -20,8 +25,9 @@ public class Vehicle {
     @JoinColumn(name = "rental_vendor_id", nullable = false)
     private RentalVendor rentalVendor;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String type; // Sedan, SUV, MPV, Luxury
+    private VehicleType type;
 
     @Column(nullable = false)
     private String brand;
@@ -39,10 +45,20 @@ public class Vehicle {
     private String licensePlate;
 
     private Integer capacity;
-    private String transmission; // Manual / Automatic
-    private String fuelType; // Bensin / Diesel / Hybrid / Listrik
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TransmissionType transmission;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private FuelType fuelType;
+
     private Double price;
-    private String status; // Available / In Use / Unavailable
+    
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private VehicleStatus status;
 
     @Builder.Default
     @OneToMany(mappedBy = "vehicle", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
