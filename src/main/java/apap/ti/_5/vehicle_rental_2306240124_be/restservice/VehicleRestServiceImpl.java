@@ -95,6 +95,13 @@ public class VehicleRestServiceImpl implements VehicleRestService {
         if (request.getPrice() == null || request.getPrice() <= 0)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "price must be positive.");
 
+        if (!vendor.getListOfLocations().contains(request.getLocation())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Lokasi '" + request.getLocation() + "' tidak tersedia untuk vendor " + vendor.getName()
+            );
+        }
+
         String vehicleId = String.format("VEH%04d", vehicleRepository.count() + 1);
 
         var vehicle = Vehicle.builder()
@@ -120,7 +127,8 @@ public class VehicleRestServiceImpl implements VehicleRestService {
     @Override
     public VehicleResponseDTO updateVehicle(String id, VehicleCreateRequestDTO request) {
         var vehicle = vehicleRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vehicle not found with id: " + id));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Vehicle not found with id: " + id));
 
         var vendor = vendorRepository.findById(request.getRentalVendorId())
                 .orElseThrow(() -> new ResponseStatusException(
@@ -128,12 +136,31 @@ public class VehicleRestServiceImpl implements VehicleRestService {
 
         if (vehicleRepository.existsByLicensePlate(request.getLicensePlate())
                 && !vehicle.getLicensePlate().equals(request.getLicensePlate())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "License plate already used by another vehicle");
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "License plate already used by another vehicle");
         }
 
         String type = validateChoice(request.getType(), "type", ALLOWED_TYPES);
         String transmission = validateChoice(request.getTransmission(), "transmission", ALLOWED_TRANSMISSIONS);
         String fuelType = validateChoice(request.getFuelType(), "fuelType", ALLOWED_FUEL_TYPES);
+
+        if (request.getBrand() == null || request.getBrand().isBlank())
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "brand is required.");
+        if (request.getModel() == null || request.getModel().isBlank())
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "model is required.");
+        if (request.getYear() == null)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "productionYear is required.");
+        if (request.getLocation() == null || request.getLocation().isBlank())
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "location is required.");
+        if (request.getCapacity() == null || request.getCapacity() <= 0)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "capacity must be positive.");
+        if (request.getPrice() == null || request.getPrice() <= 0)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "price must be positive.");
+
+        if (!vendor.getListOfLocations().contains(request.getLocation())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Lokasi '" + request.getLocation() + "' tidak tersedia untuk vendor " + vendor.getName());
+        }
 
         vehicle.setRentalVendor(vendor);
         vehicle.setType(type);
@@ -150,6 +177,7 @@ public class VehicleRestServiceImpl implements VehicleRestService {
         var updated = vehicleRepository.save(vehicle);
         return VehicleMapper.toResponse(updated);
     }
+
 
 
     @Override

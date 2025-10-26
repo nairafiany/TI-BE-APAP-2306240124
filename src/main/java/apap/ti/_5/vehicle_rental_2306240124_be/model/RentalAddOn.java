@@ -5,7 +5,6 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Data
 @Entity
@@ -15,8 +14,8 @@ import java.util.UUID;
 @Builder(toBuilder = true)
 public class RentalAddOn {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;  
 
     @Column(nullable = false)
     private String name;
@@ -27,7 +26,6 @@ public class RentalAddOn {
     @Builder.Default
     @ManyToMany(mappedBy = "addOns", fetch = FetchType.LAZY)
     private List<RentalBooking> bookings = new ArrayList<>();
-
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

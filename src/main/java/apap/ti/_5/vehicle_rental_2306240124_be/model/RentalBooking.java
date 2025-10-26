@@ -21,8 +21,11 @@ public class RentalBooking {
     @JoinColumn(name = "vehicle_id", nullable = false)
     private Vehicle vehicle;
 
-    private LocalDate pickUpTime;
-    private LocalDate dropOffTime;
+    @Column(nullable = false)
+    private LocalDateTime pickUpTime;
+
+    @Column(nullable = false)
+    private LocalDateTime dropOffTime;
 
     private String pickUpLocation;
     private String dropOffLocation;
