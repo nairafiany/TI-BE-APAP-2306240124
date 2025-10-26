@@ -1,6 +1,5 @@
 package apap.ti._5.vehicle_rental_2306240124_be.restservice;
 
-import apap.ti._5.vehicle_rental_2306240124_be.enums.VehicleStatus;
 import apap.ti._5.vehicle_rental_2306240124_be.mapper.RentalBookingMapper;
 import apap.ti._5.vehicle_rental_2306240124_be.model.*;
 import apap.ti._5.vehicle_rental_2306240124_be.repository.*;
@@ -8,7 +7,6 @@ import apap.ti._5.vehicle_rental_2306240124_be.restdto.request.rentalbooking.*;
 import apap.ti._5.vehicle_rental_2306240124_be.restdto.response.RentalBookingResponseDTO;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -36,16 +34,14 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
                 .collect(Collectors.toList());
     }
 
-
     @Override
     public RentalBookingResponseDTO getBookingById(String id) {
         var booking = rentalBookingRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found or has been deleted"));
+                .orElseThrow(() ->
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found or has been deleted"));
         return RentalBookingMapper.toResponse(booking);
     }
 
-
- 
     @Override
     public RentalBookingResponseDTO createBooking(RentalBookingCreateRequestDTO request) {
         var vehicle = vehicleRepository.findById(request.getVehicleId())
@@ -56,21 +52,12 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
                     "Drop-off date cannot be before pick-up date.");
         }
 
-        // validasi lagi
-        // if (request.getPickUpTime().isBefore(LocalDate.now())) {
-        //     throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-        //             "Pick-up date cannot be in the past.");
-        // }
-
         if (request.getCapacityNeeded() > vehicle.getCapacity()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Requested capacity exceeds vehicle capacity.");
         }
 
-
-
         long rentalDays = Math.max(1, ChronoUnit.DAYS.between(request.getPickUpTime(), request.getDropOffTime()));
-
         double totalPrice = rentalDays * vehicle.getPrice();
 
         if (Boolean.TRUE.equals(request.getIncludeDriver())) {
@@ -97,12 +84,11 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
         return RentalBookingMapper.toResponse(entity);
     }
 
-
-
     @Override
     public RentalBookingResponseDTO updateBookingDetails(String id, RentalBookingUpdateDetailsRequestDTO request) {
-    var booking = rentalBookingRepository.findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found or has been deleted"));
+        var booking = rentalBookingRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found or has been deleted"));
+
         if (!"Upcoming".equalsIgnoreCase(booking.getStatus())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Cannot update booking details. Status must be Upcoming.");
@@ -122,13 +108,12 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
         totalPrice += booking.getAddOns().stream().mapToDouble(RentalAddOn::getPrice).sum();
 
         booking.setTotalPrice(totalPrice);
-        booking.setUpdatedAt(java.time.LocalDateTime.now());
+        booking.setUpdatedAt(LocalDateTime.now());
 
         rentalBookingRepository.save(booking);
         return RentalBookingMapper.toResponse(booking);
     }
 
-  
     @Override
     public RentalBookingResponseDTO updateBookingStatus(String id, RentalBookingUpdateStatusRequestDTO request) {
         var booking = rentalBookingRepository.findByIdAndDeletedAtIsNull(id)
@@ -143,11 +128,11 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
                         "Cannot start booking before pick-up date.");
             }
             booking.setStatus("Ongoing");
-            booking.getVehicle().setStatus(VehicleStatus.IN_USE);
+            booking.getVehicle().setStatus("In Use");
 
         } else if ("Ongoing".equalsIgnoreCase(booking.getStatus()) && "Done".equalsIgnoreCase(newStatus)) {
             booking.setStatus("Done");
-            booking.getVehicle().setStatus(VehicleStatus.AVAILABLE);
+            booking.getVehicle().setStatus("Available");
 
             if (LocalDate.now().isAfter(booking.getDropOffTime())) {
                 long hoursLate = ChronoUnit.HOURS.between(
@@ -162,11 +147,11 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
                     "Invalid status transition.");
         }
 
-        booking.setUpdatedAt(java.time.LocalDateTime.now());
+        booking.setUpdatedAt(LocalDateTime.now());
         rentalBookingRepository.save(booking);
         return RentalBookingMapper.toResponse(booking);
     }
- 
+
     @Override
     public RentalBookingResponseDTO updateBookingAddOns(String id, RentalBookingUpdateAddOnsRequestDTO request) {
         var booking = rentalBookingRepository.findByIdAndDeletedAtIsNull(id)
@@ -187,13 +172,11 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
         totalPrice += addOns.stream().mapToDouble(RentalAddOn::getPrice).sum();
 
         booking.setTotalPrice(totalPrice);
-        booking.setUpdatedAt(java.time.LocalDateTime.now());
+        booking.setUpdatedAt(LocalDateTime.now());
 
         rentalBookingRepository.save(booking);
         return RentalBookingMapper.toResponse(booking);
     }
-
-
 
     @Override
     public void deleteBooking(String id) {
@@ -210,19 +193,15 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
         if (beforePickup) booking.setTotalPrice(0.0);
 
         booking.setStatus("Done");
-        booking.getVehicle().setStatus(VehicleStatus.AVAILABLE);
+        booking.getVehicle().setStatus("Available");
         booking.setUpdatedAt(LocalDateTime.now());
-        booking.setDeletedAt(LocalDateTime.now()); 
+        booking.setDeletedAt(LocalDateTime.now());
 
         rentalBookingRepository.save(booking);
     }
 
-
-
- 
     @Override
     public List<BookingChartPointDTO> getBookingStatistics(String period, Integer year) {
-        // Ambil semua booking dalam tahun tersebut
         var bookings = rentalBookingRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()
                 .stream()
                 .filter(b -> b.getCreatedAt() != null && b.getCreatedAt().getYear() == year)
@@ -236,19 +215,14 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
 
         if ("monthly".equalsIgnoreCase(period)) {
             for (int month = 1; month <= 12; month++) {
-                final int currentMonth = month; 
+                final int currentMonth = month;
 
                 long count = bookings.stream()
                         .filter(b -> b.getCreatedAt().getMonthValue() == currentMonth)
                         .count();
 
-                String monthName = java.time.Month.of(currentMonth)
-                        .name()
-                        .substring(0, 1)
-                        .toUpperCase() + java.time.Month.of(currentMonth)
-                        .name()
-                        .substring(1)
-                        .toLowerCase();
+                String monthName = java.time.Month.of(currentMonth).name();
+                monthName = monthName.substring(0, 1) + monthName.substring(1).toLowerCase();
 
                 results.add(BookingChartPointDTO.builder()
                         .label(monthName)
@@ -281,5 +255,4 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
 
         return results;
     }
-
 }

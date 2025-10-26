@@ -33,6 +33,23 @@ public class VehicleRestController {
         );
     }
 
+    @GetMapping("/filter")
+    public ResponseEntity<BaseResponse<List<VehicleResponseDTO>>> getFilteredVehicles(
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String keyword
+    ) {
+        var data = vehicleRestService.getFilteredVehicles(type, keyword);
+        return ResponseEntity.ok(
+                BaseResponse.<List<VehicleResponseDTO>>builder()
+                        .status(200)
+                        .message("Success fetching filtered vehicles")
+                        .timestamp(OffsetDateTime.now())
+                        .data(data)
+                        .build()
+        );
+    }
+
+
     @GetMapping("/{id}")
     public ResponseEntity<BaseResponse<VehicleResponseDTO>> getVehicleById(@PathVariable String id) {
         try {

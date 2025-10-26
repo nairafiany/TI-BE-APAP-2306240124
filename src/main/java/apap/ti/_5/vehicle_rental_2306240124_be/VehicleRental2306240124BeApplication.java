@@ -50,6 +50,7 @@ public class VehicleRental2306240124BeApplication {
 			List<String> types = List.of("Sedan", "SUV", "MPV", "Luxury");
 			List<String> fuels = List.of("Bensin", "Diesel", "Hybrid", "Listrik");
 			List<String> transmissions = List.of("Manual", "Automatic");
+			List<String> statuses = List.of("Available", "In Use", "Unavailable");
 
 			IntStream.range(0, 10).forEach(i -> {
 				RentalVendor vendor = vendors.get(random.nextInt(vendors.size()));
@@ -60,14 +61,14 @@ public class VehicleRental2306240124BeApplication {
 						.type(types.get(random.nextInt(types.size())))
 						.brand(faker.company().name())
 						.model(faker.ancient().hero())
-						.year(2018 + random.nextInt(7))
+						.productionYear(2018 + random.nextInt(7))
 						.location(vendor.getListOfLocations().get(0))
 						.licensePlate("B " + (1000 + i) + " AP")
 						.capacity(4 + random.nextInt(4))
 						.transmission(transmissions.get(random.nextInt(transmissions.size())))
 						.fuelType(fuels.get(random.nextInt(fuels.size())))
 						.price(300_000.0 + random.nextInt(700_000))
-						.status("Available")
+						.status(statuses.get(0)) // default Available
 						.build();
 
 				vehicleRepository.save(vehicle);

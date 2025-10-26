@@ -6,11 +6,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import apap.ti._5.vehicle_rental_2306240124_be.enums.FuelType;
-import apap.ti._5.vehicle_rental_2306240124_be.enums.TransmissionType;
-import apap.ti._5.vehicle_rental_2306240124_be.enums.VehicleStatus;
-import apap.ti._5.vehicle_rental_2306240124_be.enums.VehicleType;
-
 @Data
 @Entity
 @Table(name = "vehicle")
@@ -18,6 +13,7 @@ import apap.ti._5.vehicle_rental_2306240124_be.enums.VehicleType;
 @AllArgsConstructor
 @Builder(toBuilder = true)
 public class Vehicle {
+
     @Id
     private String id; // format: VEHxxxx
 
@@ -25,9 +21,8 @@ public class Vehicle {
     @JoinColumn(name = "rental_vendor_id", nullable = false)
     private RentalVendor rentalVendor;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private VehicleType type;
+    private String type; // Sedan, SUV, MPV, Luxury
 
     @Column(nullable = false)
     private String brand;
@@ -35,8 +30,8 @@ public class Vehicle {
     @Column(nullable = false)
     private String model;
 
-    @Column(nullable = false)
-    private Integer year;
+    @Column(name = "production_year", nullable = false)
+    private Integer productionYear;
 
     @Column(nullable = false)
     private String location;
@@ -44,26 +39,24 @@ public class Vehicle {
     @Column(nullable = false, unique = true)
     private String licensePlate;
 
+    @Column(nullable = false)
     private Integer capacity;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private TransmissionType transmission;
+    private String transmission; // Manual, Automatic
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private FuelType fuelType;
+    private String fuelType; // Bensin, Diesel, Hybrid, Listrik
 
+    @Column(nullable = false)
     private Double price;
-    
-    @Enumerated(EnumType.STRING)
+
     @Column(nullable = false)
-    private VehicleStatus status;
+    private String status; // Available, In Use, Unavailable
 
     @Builder.Default
     @OneToMany(mappedBy = "vehicle", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<RentalBooking> bookings = new ArrayList<>();
-
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

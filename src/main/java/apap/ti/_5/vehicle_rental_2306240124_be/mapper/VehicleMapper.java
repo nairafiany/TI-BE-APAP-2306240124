@@ -23,14 +23,14 @@ public class VehicleMapper {
                 .type(vehicle.getType())
                 .brand(vehicle.getBrand())
                 .model(vehicle.getModel())
-                .year(vehicle.getYear())
+                .year(vehicle.getProductionYear()) // 🧩 renamed field
                 .location(vehicle.getLocation())
                 .licensePlate(vehicle.getLicensePlate())
                 .capacity(vehicle.getCapacity())
-                .transmission(vehicle.getTransmission())
-                .fuelType(vehicle.getFuelType())
+                .transmission(vehicle.getTransmission()) // no .name()
+                .fuelType(vehicle.getFuelType())         // no .name()
                 .price(vehicle.getPrice())
-                .status(vehicle.getStatus())
+                .status(vehicle.getStatus())             // no .name()
                 .createdAt(vehicle.getCreatedAt())
                 .updatedAt(vehicle.getUpdatedAt())
                 .build();

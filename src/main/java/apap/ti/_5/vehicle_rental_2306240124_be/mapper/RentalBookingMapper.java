@@ -15,7 +15,12 @@ public class RentalBookingMapper {
                 .id(booking.getId())
                 .vehicleId(booking.getVehicle().getId())
                 .vehicleBrand(booking.getVehicle().getBrand())
-                .vehicleType(booking.getVehicle().getType())
+                .vehicleType(
+                booking.getVehicle() != null && booking.getVehicle().getType() != null
+        ? booking.getVehicle().getType()
+        : null
+
+                )
                 .pickUpTime(booking.getPickUpTime())
                 .dropOffTime(booking.getDropOffTime())
                 .pickUpLocation(booking.getPickUpLocation())

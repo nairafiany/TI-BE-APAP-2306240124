@@ -7,6 +7,8 @@ import java.util.List;
 
 public interface VehicleRestService {
     List<VehicleResponseDTO> getAllVehicles();
+    List<VehicleResponseDTO> getFilteredVehicles(String type, String keyword);
+
     VehicleResponseDTO getVehicleById(String id);
     VehicleResponseDTO createVehicle(VehicleCreateRequestDTO request);
     VehicleResponseDTO updateVehicle(String id, VehicleCreateRequestDTO request);
