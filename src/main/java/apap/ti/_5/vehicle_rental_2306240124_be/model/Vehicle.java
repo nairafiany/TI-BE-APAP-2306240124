@@ -6,6 +6,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Data
 @Entity
 @Table(name = "vehicle")
@@ -19,6 +21,7 @@ public class Vehicle {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "rental_vendor_id", nullable = false)
+    @JsonIgnore
     private RentalVendor rentalVendor;
 
     @Column(nullable = false)

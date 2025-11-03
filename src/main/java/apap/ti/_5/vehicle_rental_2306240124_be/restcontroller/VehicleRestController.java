@@ -2,12 +2,14 @@ package apap.ti._5.vehicle_rental_2306240124_be.restcontroller;
 
 import apap.ti._5.vehicle_rental_2306240124_be.restdto.common.BaseResponse;
 import apap.ti._5.vehicle_rental_2306240124_be.restdto.request.vehicle.VehicleCreateRequestDTO;
+import apap.ti._5.vehicle_rental_2306240124_be.restdto.request.vehicle.VehicleUpdateRequestDTO;
 import apap.ti._5.vehicle_rental_2306240124_be.restdto.response.VehicleResponseDTO;
 import apap.ti._5.vehicle_rental_2306240124_be.restservice.VehicleRestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.validation.Valid;
 import java.time.OffsetDateTime;
@@ -86,30 +88,38 @@ public class VehicleRestController {
                         .build());
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<BaseResponse<VehicleResponseDTO>> updateVehicle(
-            @PathVariable String id,
-            @Valid @RequestBody VehicleCreateRequestDTO request
-    ) {
+        @PutMapping("/{id}")
+        public ResponseEntity<BaseResponse<VehicleResponseDTO>> updateVehicle(
+                @PathVariable String id,
+                @Valid @RequestBody VehicleUpdateRequestDTO request
+        ) {
         try {
-            var updated = vehicleRestService.updateVehicle(id, request);
-            return ResponseEntity.ok(
-                    BaseResponse.<VehicleResponseDTO>builder()
-                            .status(200)
-                            .message("Vehicle successfully updated")
-                            .timestamp(OffsetDateTime.now())
-                            .data(updated)
-                            .build()
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(BaseResponse.<VehicleResponseDTO>builder()
-                            .status(404)
-                            .message(e.getMessage())
-                            .timestamp(OffsetDateTime.now())
-                            .build());
+                var updated = vehicleRestService.updateVehicle(id, request);
+                return ResponseEntity.ok(
+                        BaseResponse.<VehicleResponseDTO>builder()
+                                .status(200)
+                                .message("Vehicle successfully updated")
+                                .timestamp(OffsetDateTime.now())
+                                .data(updated)
+                                .build()
+                );
+        } catch (ResponseStatusException e) {
+                return ResponseEntity.status(e.getStatusCode())
+                        .body(BaseResponse.<VehicleResponseDTO>builder()
+                                .status(e.getStatusCode().value())
+                                .message(e.getReason())
+                                .timestamp(OffsetDateTime.now())
+                                .build());
+        } catch (Exception e) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(BaseResponse.<VehicleResponseDTO>builder()
+                                .status(500)
+                                .message("Unexpected error: " + e.getMessage())
+                                .timestamp(OffsetDateTime.now())
+                                .build());
         }
-    }
+        }
+
 
     @DeleteMapping("/{id}")
     public ResponseEntity<BaseResponse<Void>> deleteVehicle(@PathVariable String id) {

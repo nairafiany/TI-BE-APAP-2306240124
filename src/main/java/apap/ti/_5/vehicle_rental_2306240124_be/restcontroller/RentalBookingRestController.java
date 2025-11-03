@@ -10,8 +10,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -88,6 +91,66 @@ public class RentalBookingRestController {
                         .build()
         );
     }
+
+    @PutMapping("/{id}/update-details")
+    public ResponseEntity<BaseResponse<RentalBookingResponseDTO>> updateBookingDetails(
+            @PathVariable String id,
+            @Valid @RequestBody RentalBookingUpdateDetailsRequestDTO request) {
+        var updated = rentalBookingRestService.updateBookingDetails(id, request);
+        return ResponseEntity.ok(
+            BaseResponse.<RentalBookingResponseDTO>builder()
+                .status(200)
+                .message("Rental booking details successfully updated")
+                .timestamp(OffsetDateTime.now())
+                .data(updated)
+                .build());
+    }
+
+    @PutMapping("/bookings/{id}/update-status")
+    public ResponseEntity<Map<String, Object>> updateBookingStatus(
+            @PathVariable String id,
+            @RequestBody RentalBookingUpdateStatusRequestDTO request
+    ) {
+        var updatedBooking = rentalBookingRestService.updateBookingStatus(id, request);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("status", 200);
+        response.put("message", "Booking status successfully updated");
+        response.put("timestamp", LocalDateTime.now());
+        response.put("data", updatedBooking);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/update-addons")
+    public ResponseEntity<BaseResponse<RentalBookingResponseDTO>> updateBookingAddOns(
+            @PathVariable String id,
+            @RequestBody RentalBookingUpdateAddOnsRequestDTO request
+    ) {
+        var updated = rentalBookingRestService.updateBookingAddOns(id, request);
+        return ResponseEntity.ok(
+            BaseResponse.<RentalBookingResponseDTO>builder()
+                .status(200)
+                .message("Booking add-ons successfully updated")
+                .timestamp(OffsetDateTime.now())
+                .data(updated)
+                .build()
+        );
+    }
+
+    @DeleteMapping("/{id}/delete")
+    public ResponseEntity<BaseResponse<RentalBookingResponseDTO>> cancelBooking(@PathVariable String id) {
+        var cancelled = rentalBookingRestService.cancelBooking(id);
+        return ResponseEntity.ok(
+            BaseResponse.<RentalBookingResponseDTO>builder()
+                .status(200)
+                .message("Booking successfully cancelled (soft deleted)")
+                .timestamp(OffsetDateTime.now())
+                .data(cancelled)
+                .build()
+        );
+    }
+
 
 
 }

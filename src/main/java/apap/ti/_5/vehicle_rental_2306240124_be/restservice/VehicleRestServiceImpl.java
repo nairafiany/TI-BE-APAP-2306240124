@@ -5,12 +5,14 @@ import apap.ti._5.vehicle_rental_2306240124_be.model.Vehicle;
 import apap.ti._5.vehicle_rental_2306240124_be.repository.RentalVendorRepository;
 import apap.ti._5.vehicle_rental_2306240124_be.repository.VehicleRepository;
 import apap.ti._5.vehicle_rental_2306240124_be.restdto.request.vehicle.VehicleCreateRequestDTO;
+import apap.ti._5.vehicle_rental_2306240124_be.restdto.request.vehicle.VehicleUpdateRequestDTO;
 import apap.ti._5.vehicle_rental_2306240124_be.restdto.response.VehicleResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -125,59 +127,65 @@ public class VehicleRestServiceImpl implements VehicleRestService {
     }
 
     @Override
-    public VehicleResponseDTO updateVehicle(String id, VehicleCreateRequestDTO request) {
+    public VehicleResponseDTO updateVehicle(String id, VehicleUpdateRequestDTO request) {
         var vehicle = vehicleRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Vehicle not found with id: " + id));
 
-        var vendor = vendorRepository.findById(request.getRentalVendorId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Vendor not found with id: " + request.getRentalVendorId()));
+        // 🛑 1️⃣ Cegah update kalau kendaraan masih punya booking aktif
+        boolean hasActiveBooking = vehicle.getBookings().stream()
+                .anyMatch(b -> (
+                        "Upcoming".equalsIgnoreCase(b.getStatus()) ||
+                        "Ongoing".equalsIgnoreCase(b.getStatus())
+                ) && b.getDeletedAt() == null);
 
-        if (vehicleRepository.existsByLicensePlate(request.getLicensePlate())
-                && !vehicle.getLicensePlate().equals(request.getLicensePlate())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "License plate already used by another vehicle");
+        if (hasActiveBooking) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Vehicle cannot be updated while it has active bookings (Upcoming/Ongoing).");
         }
 
+        // ✅ 2️⃣ Validasi enum-like fields
         String type = validateChoice(request.getType(), "type", ALLOWED_TYPES);
         String transmission = validateChoice(request.getTransmission(), "transmission", ALLOWED_TRANSMISSIONS);
         String fuelType = validateChoice(request.getFuelType(), "fuelType", ALLOWED_FUEL_TYPES);
+        String status = validateChoice(request.getStatus(), "status", ALLOWED_STATUSES); 
+        // e.g. ALLOWED_STATUSES = List.of("Available", "In Use", "Unavailable")
 
-        if (request.getBrand() == null || request.getBrand().isBlank())
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "brand is required.");
-        if (request.getModel() == null || request.getModel().isBlank())
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "model is required.");
-        if (request.getYear() == null)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "productionYear is required.");
-        if (request.getLocation() == null || request.getLocation().isBlank())
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "location is required.");
-        if (request.getCapacity() == null || request.getCapacity() <= 0)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "capacity must be positive.");
-        if (request.getPrice() == null || request.getPrice() <= 0)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "price must be positive.");
+        // ✅ 3️⃣ Validasi umum
+        if (!vendorRepository.existsById(vehicle.getRentalVendor().getId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, 
+                "Vendor not found for this vehicle.");
+        }
 
+        if (request.getLocation() == null || request.getLocation().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Location is required.");
+        }
+
+        // ✅ 4️⃣ Validasi lokasi sesuai vendor
+        var vendor = vehicle.getRentalVendor();
         if (!vendor.getListOfLocations().contains(request.getLocation())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Lokasi '" + request.getLocation() + "' tidak tersedia untuk vendor " + vendor.getName());
         }
 
-        vehicle.setRentalVendor(vendor);
+        // ✅ 5️⃣ Update semua field dari request
         vehicle.setType(type);
         vehicle.setBrand(request.getBrand());
         vehicle.setModel(request.getModel());
         vehicle.setProductionYear(request.getYear());
         vehicle.setLocation(request.getLocation());
-        vehicle.setLicensePlate(request.getLicensePlate());
         vehicle.setCapacity(request.getCapacity());
         vehicle.setTransmission(transmission);
         vehicle.setFuelType(fuelType);
         vehicle.setPrice(request.getPrice());
+        vehicle.setStatus(status); // ✅ Now this will properly update
+
+        // ✅ 6️⃣ Update waktu modifikasi
+        vehicle.setUpdatedAt(LocalDateTime.now());
 
         var updated = vehicleRepository.save(vehicle);
         return VehicleMapper.toResponse(updated);
     }
-
 
 
     @Override
