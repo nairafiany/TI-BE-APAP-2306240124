@@ -18,16 +18,15 @@ import java.util.List;
 public class RentalBookingCreateRequestDTO {
 
     private String vehicleId;
-
     private String pickUpLocation;
-
     private String dropOffLocation;
-
     private LocalDateTime pickUpTime;
-
     private LocalDateTime dropOffTime;
-
     private Boolean includeDriver;
-
     private List<Long> addOnIds;
+
+    // --- ⬇️ TAMBAHKAN DUA FIELD INI ⬇️ ---
+    private Integer capacityNeeded;
+    private String transmissionNeeded;
+    // --- ⬆️ PERBAIKAN SELESAI ⬆️ ---
 }

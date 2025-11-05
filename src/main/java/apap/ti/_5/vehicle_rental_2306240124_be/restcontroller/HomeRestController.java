@@ -1,0 +1,38 @@
+package apap.ti._5.vehicle_rental_2306240124_be.restcontroller;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ResponseEntity;
+import java.util.Map;
+
+import apap.ti._5.vehicle_rental_2306240124_be.repository.VehicleRepository;
+import apap.ti._5.vehicle_rental_2306240124_be.repository.RentalVendorRepository;
+import apap.ti._5.vehicle_rental_2306240124_be.repository.RentalBookingRepository;
+
+@RestController
+@RequestMapping("/api/home")
+@RequiredArgsConstructor
+public class HomeRestController {
+
+    private final VehicleRepository vehicleRepository;
+    private final RentalVendorRepository vendorRepository;
+    private final RentalBookingRepository bookingRepository;
+
+    /**
+     * Endpoint: GET /api/home/summary
+     * Digunakan oleh halaman Beranda (Home)
+     * untuk menampilkan total kendaraan, vendor, dan pesanan.
+     */
+    @GetMapping("/summary")
+    public ResponseEntity<Map<String, Long>> getHomeSummary() {
+        long totalVehicles = vehicleRepository.count();
+        long totalVendors = vendorRepository.count();
+        long totalBookings = bookingRepository.count();
+
+        return ResponseEntity.ok(Map.of(
+            "totalVehicles", totalVehicles,
+            "totalVendors", totalVendors,
+            "totalBookings", totalBookings
+        ));
+    }
+}

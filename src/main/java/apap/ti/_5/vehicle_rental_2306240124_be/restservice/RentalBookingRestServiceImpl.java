@@ -89,69 +89,80 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
                 
                 .build();
     }
-
-@Override
-    public List<VehicleResponseDTO> searchAvailableVehicles(RentalBookingSearchRequestDTO request) {
-        // --- Bagian 1: Validasi (Tetap sama) ---
+        @Override
+        public List<VehicleResponseDTO> searchAvailableVehicles(RentalBookingSearchRequestDTO request) {
+        // --- Bagian 1: Validasi ---
         if (request.getPickUpTime() == null || request.getDropOffTime() == null)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pick-up and drop-off times are required.");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pick-up and drop-off times are required.");
         if (request.getDropOffTime().isBefore(request.getPickUpTime()))
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Drop-off time must be after pick-up time.");
-        if (request.getPickUpTime().isBefore(LocalDateTime.now()))
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pick-up time cannot be in the past.");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Drop-off time must be after pick-up time.");
+        
+        // Izinkan pencarian di masa lalu HANYA saat update (jika ada bookingIdToExclude)
+        if (request.getBookingIdToExclude() == null && request.getPickUpTime().isBefore(LocalDateTime.now()))
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pick-up time cannot be in the past.");
 
-        // --- Bagian 2: Filter Dasar (Tetap sama) ---
+        // --- Bagian 2: Filter Dasar (Kapasitas, Transmisi) ---
         var baseFiltered = vehicleRepository.findAll().stream()
-                .filter(v -> "Available".equalsIgnoreCase(v.getStatus()))
                 .filter(v -> v.getCapacity() >= request.getCapacityNeeded())
                 .filter(v -> v.getTransmission().equalsIgnoreCase(request.getTransmissionNeeded()))
                 .collect(Collectors.toList());
 
-        // --- Bagian 3: Filter Lokasi Vendor [YANG PERLU ANDA TAMBAHKAN] ---
+        // --- Bagian 3: Filter Lokasi Vendor (Sudah Benar) ---
         var filteredByLocation = baseFiltered.stream()
                 .filter(vehicle -> {
-                    var vendor = vehicle.getRentalVendor();
-                    // Jika kendaraan tidak punya vendor, singkirkan
-                    if (vendor == null || vendor.getListOfLocations() == null) return false;
-
-                    // Cek apakah vendor melayani lokasi pick-up
-                    boolean hasPickupLocation = vendor.getListOfLocations().stream()
-                            .anyMatch(location -> location.equalsIgnoreCase(request.getPickUpLocation()));
-
-                    // Cek apakah vendor melayani lokasi drop-off
-                    boolean hasDropoffLocation = vendor.getListOfLocations().stream()
-                            .anyMatch(location -> location.equalsIgnoreCase(request.getDropOffLocation()));
-                    
-                    // Kendaraan hanya valid jika vendor melayani KEDUA lokasi
-                    return hasPickupLocation && hasDropoffLocation;
+                        var vendor = vehicle.getRentalVendor();
+                        if (vendor == null || vendor.getListOfLocations() == null) return false;
+                        boolean hasPickupLocation = vendor.getListOfLocations().stream()
+                                .anyMatch(location -> location.equalsIgnoreCase(request.getPickUpLocation()));
+                        boolean hasDropoffLocation = vendor.getListOfLocations().stream()
+                                .anyMatch(location -> location.equalsIgnoreCase(request.getDropOffLocation()));
+                        return hasPickupLocation && hasDropoffLocation;
                 })
                 .collect(Collectors.toList());
 
-        // ...
-    // Filter booking overlap
-    var availableVehicles = filteredByLocation.stream()
-            .filter(vehicle -> vehicle.getBookings().stream().noneMatch(booking -> {
+        // --- ⬇️ PERBAIKAN UTAMA: LOGIKA OVERLAP ⬇️ ---
+        
+        // Ambil ID booking. Jika null (mode CREATE), gunakan string kosong agar query-nya tetap aman.
+        String bookingIdToExclude = Optional.ofNullable(request.getBookingIdToExclude()).orElse("");
+
+        var availableVehicles = filteredByLocation.stream()
+                .filter(vehicle -> {
                 
-                // [FIX WAJIB ADA] Cek apakah ini booking yang sedang di-edit
-                if (request.getBookingIdToExclude() != null && booking.getId().equals(request.getBookingIdToExclude())) {
-                    return false; // Jika ya, jangan anggap sebagai konflik
+                // 1. Cek status kendaraan
+                boolean isAvailable = "Available".equalsIgnoreCase(vehicle.getStatus());
+                
+                // 2. Cek apakah ini kendaraan yang sedang kita edit
+                // (Kita harus izinkan meski statusnya "In Use" JIKA itu booking yg kita edit)
+                // (Tapi untuk alur update, statusnya PASTI "Available" karena booking "Upcoming")
+                // Jadi, kita hanya perlu cek "Available".
+                
+                if (!isAvailable) {
+                        // Jika tidak "Available", singkirkan.
+                        return false;
                 }
 
-                // Logika overlap yang sudah ada
-                if (booking.getDeletedAt() != null || "Done".equalsIgnoreCase(booking.getStatus())) return false;
+                // 3. Cek overlap MENGGUNAKAN QUERY BARU
+                // PASTIKAN ANDA SUDAH MENAMBAHKAN `existsOverlapExcludingId` DI REPOSITORY
+                boolean hasOverlap = rentalBookingRepository.existsOverlapExcludingId(
+                        vehicle,
+                        request.getPickUpTime(),
+                        request.getDropOffTime(),
+                        bookingIdToExclude
+                );
                 
-                return !(request.getDropOffTime().isBefore(booking.getPickUpTime()) ||
-                         request.getPickUpTime().isAfter(booking.getDropOffTime()));
-            }))
-            .collect(Collectors.toList());
-// ...
+                // Jika TIDAK ada overlap, kendaraan ini tersedia.
+                return !hasOverlap;
+                })
+                .collect(Collectors.toList());
+        
+        // --- ⬆️ PERBAIKAN SELESAI ⬆️ ---
 
-        // --- Bagian 5: Hitung Harga dan Sorting (Tetap sama) ---
+        // --- Bagian 5: Hitung Harga dan Sorting (Tidak Berubah) ---
         long rentalDays = ChronoUnit.DAYS.between(request.getPickUpTime(), request.getDropOffTime());
         if (ChronoUnit.SECONDS.between(request.getPickUpTime(), request.getDropOffTime()) > 0 && rentalDays == 0) {
-            rentalDays = 1;
+                rentalDays = 1;
         } else if (ChronoUnit.SECONDS.between(request.getPickUpTime(), request.getDropOffTime()) > rentalDays * 24 * 3600) {
-            rentalDays += 1;
+                rentalDays += 1;
         }
         rentalDays = Math.max(1, rentalDays);
 
@@ -162,97 +173,105 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
                 .sorted(Comparator.comparingDouble(v -> finalRentalDays * v.getPrice() + driverCost))
                 .map(VehicleMapper::toResponse)
                 .collect(Collectors.toList());
-    }
-    // =============================================================
+        }
+        // =============================================================
     // ✅ CREATE BOOKING (FULLY FIXED)
     // =============================================================
-@Override
-    public RentalBookingResponseDTO createBooking(RentalBookingCreateRequestDTO request) {
-        var vehicle = vehicleRepository.findById(request.getVehicleId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vehicle not found."));
+        @Override
+        public RentalBookingResponseDTO createBooking(RentalBookingCreateRequestDTO request) {
+                var vehicle = vehicleRepository.findById(request.getVehicleId())
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vehicle not found."));
 
-        var vendor = vehicle.getRentalVendor();
-        if (vendor == null)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vendor information missing.");
+                var vendor = vehicle.getRentalVendor();
+                if (vendor == null)
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vendor information missing.");
 
-        // Validasi lokasi vendor (sudah benar)
-        if (!vendor.getListOfLocations().contains(request.getPickUpLocation()))
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Pickup location not supported by vendor " + vendor.getName());
-        if (!vendor.getListOfLocations().contains(request.getDropOffLocation()))
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Drop-off location not supported by vendor " + vendor.getName());
+                // Validasi lokasi vendor (sudah benar)
+                if (!vendor.getListOfLocations().contains(request.getPickUpLocation()))
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Pickup location not supported by vendor " + vendor.getName());
+                if (!vendor.getListOfLocations().contains(request.getDropOffLocation()))
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Drop-off location not supported by vendor " + vendor.getName());
 
-        // Validasi waktu (sudah benar)
-        if (request.getPickUpTime() == null || request.getDropOffTime() == null)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pick-up and drop-off times are required.");
-        if (request.getDropOffTime().isBefore(request.getPickUpTime()))
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Drop-off time must be after pick-up time.");
+                // Validasi waktu (sudah benar)
+                if (request.getPickUpTime() == null || request.getDropOffTime() == null)
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pick-up and drop-off times are required.");
+                if (request.getDropOffTime().isBefore(request.getPickUpTime()))
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Drop-off time must be after pick-up time.");
 
-        // Cek overlap (sudah benar)
-        boolean hasOverlap = rentalBookingRepository.findAll().stream()
-                .filter(b -> b.getVehicle().getId().equals(vehicle.getId()))
-                .anyMatch(b ->
-                        b.getDeletedAt() == null &&
-                        !"Done".equalsIgnoreCase(b.getStatus()) &&
-                        !(request.getDropOffTime().isBefore(b.getPickUpTime()) ||
-                          request.getPickUpTime().isAfter(b.getDropOffTime()))
+                // --- ⬇️ PERBAIKAN LOGIKA OVERLAP ⬇️ ---
+                // Pindahkan cek overlap ke repository agar lebih efisien dan akurat
+                // GANTI INI JIKA ANDA SUDAH BUAT QUERY `existsOverlapExcludingId`
+                boolean hasOverlap = rentalBookingRepository.existsByVehicleAndDeletedAtIsNullAndStatusNotAndPickUpTimeBeforeAndDropOffTimeAfter(
+                vehicle,
+                "Done",
+                request.getDropOffTime(), // Waktu akhir request
+                request.getPickUpTime()  // Waktu mulai request
                 );
 
-        if (hasOverlap)
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Vehicle already booked in that time range.");
+                if (hasOverlap)
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Vehicle already booked in that time range.");
 
-        // --- ⬇️ PERBAIKAN MULAI DI SINI ⬇️ ---
+                // --- ⬇️ PERBAIKAN ADD-ON & RELASI ⬇️ ---
 
-        // 1. Ambil entity AddOn dari ID
-        var addOns = Optional.ofNullable(request.getAddOnIds()).orElse(List.of()).stream()
-                .map(rentalAddOnRepository::findById)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toList()); // Ubah ke List sesuai model
+                // 1. Ambil entity AddOn dari ID
+                var addOns = Optional.ofNullable(request.getAddOnIds()).orElse(List.of()).stream()
+                        .map(rentalAddOnRepository::findById)
+                        .filter(Optional::isPresent)
+                        .map(Optional::get)
+                        .collect(Collectors.toList()); // Sesuai model
 
-        // 2. Hitung total harga (logika Anda sudah benar)
-        long rentalDays = Math.max(1, ChronoUnit.DAYS.between(request.getPickUpTime(), request.getDropOffTime()));
-        double vehicleCost = rentalDays * vehicle.getPrice();
-        double driverCost = Boolean.TRUE.equals(request.getIncludeDriver()) ? rentalDays * 100_000 : 0;
-        double addOnCost = addOns.stream().mapToDouble(RentalAddOn::getPrice).sum(); // Hitung dari entity
-        double totalPrice = vehicleCost + driverCost + addOnCost;
+                // 2. Hitung total harga (logika Anda sudah benar)
+                long rentalDays = Math.max(1, ChronoUnit.DAYS.between(request.getPickUpTime(), request.getDropOffTime()));
+                double vehicleCost = rentalDays * vehicle.getPrice();
+                double driverCost = Boolean.TRUE.equals(request.getIncludeDriver()) ? rentalDays * 100_000 : 0;
+                double addOnCost = addOns.stream().mapToDouble(RentalAddOn::getPrice).sum(); 
+                double totalPrice = vehicleCost + driverCost + addOnCost;
 
-        // 3. Generate ID (sudah benar)
-        String bookingId = String.format("VR%06d", rentalBookingRepository.count() + 1);
+                // 3. Generate ID (sudah benar)
+                String bookingId = String.format("VR%06d", rentalBookingRepository.count() + 1);
 
-        // 4. Simpan booking
-        var booking = RentalBooking.builder()
-                .id(bookingId)
-                .vehicle(vehicle)
-                .pickUpLocation(request.getPickUpLocation())
-                .dropOffLocation(request.getDropOffLocation())
-                .pickUpTime(request.getPickUpTime())
-                .dropOffTime(request.getDropOffTime())
-                .includeDriver(request.getIncludeDriver())
-                .totalPrice(totalPrice)
-                .status("Upcoming")
-                .addOns(addOns) // <-- 5. TAMBAHKAN RELASI ADD-ON DI SINI
-                .build();
-        
-        // --- ⬆️ PERBAIKAN SELESAI DI SINI ⬆️ ---
+                // 4. Simpan booking
+                var booking = RentalBooking.builder()
+                        .id(bookingId)
+                        .vehicle(vehicle)
+                        .pickUpLocation(request.getPickUpLocation())
+                        .dropOffLocation(request.getDropOffLocation())
+                        .pickUpTime(request.getPickUpTime())
+                        .dropOffTime(request.getDropOffTime())
+                        .includeDriver(request.getIncludeDriver())
+                        .totalPrice(totalPrice)
+                        .status("Upcoming")
+                        .addOns(addOns) // <-- Ini memperbaiki bug add-on
+                        
+                        // --- ⬇️ TAMBAHKAN DUA BARIS INI ⬇️ ---
+                        .capacityNeeded(request.getCapacityNeeded())
+                        .transmissionNeeded(request.getTransmissionNeeded())
+                        // --- ⬆️ PERBAIKAN SELESAI ⬆️ ---
 
-        var saved = rentalBookingRepository.save(booking);
+                        .build();
+                
+                var saved = rentalBookingRepository.save(booking);
+                
+                // 5. SINKRONISASI BI-DIRECTIONAL
+                vehicle.getBookings().add(saved); // <-- Ini memperbaiki bug relasi
+                vehicleRepository.save(vehicle); // <-- Simpan perubahan pada vehicle
 
-        // Response DTO (Sekarang akan berfungsi setelah fix Lombok)
-        return RentalBookingResponseDTO.builder()
-                .id(saved.getId())
-                .vehicleId(vehicle.getId())
-                .vehicleName(vehicle.getBrand() + " " + vehicle.getModel())
-                .pickUpLocation(saved.getPickUpLocation())
-                .dropOffLocation(saved.getDropOffLocation())
-                .pickUpTime(saved.getPickUpTime())    
-                .dropOffTime(saved.getDropOffTime())  
-                .totalPrice(saved.getTotalPrice())
-                .status(saved.getStatus())
-                .includeDriver(saved.getIncludeDriver())
-                .build();
-    }
+                // Response DTO
+                return RentalBookingResponseDTO.builder()
+                        .id(saved.getId())
+                        .vehicleId(vehicle.getId())
+                        .vehicleName(vehicle.getBrand() + " " + vehicle.getModel())
+                        .pickUpLocation(saved.getPickUpLocation())
+                        .dropOffLocation(saved.getDropOffLocation())
+                        .pickUpTime(saved.getPickUpTime())    
+                        .dropOffTime(saved.getDropOffTime())  
+                        .totalPrice(saved.getTotalPrice())
+                        .status(saved.getStatus())
+                        .includeDriver(saved.getIncludeDriver())
+                        .build();
+        }
 
 
         @Override
@@ -278,17 +297,18 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pick-up and drop-off times are required.");
         if (request.getDropOffTime().isBefore(request.getPickUpTime()))
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Drop-off must be after pick-up.");
-        if (request.getPickUpTime().isBefore(LocalDateTime.now()))
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pick-up cannot be in the past.");
+        
+        // Izinkan waktu lampau HANYA jika itu adalah waktu pick-up yang sama persis (tidak berubah)
+        if (request.getPickUpTime().isBefore(LocalDateTime.now()) && !request.getPickUpTime().equals(booking.getPickUpTime()))
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New pick-up time cannot be in the past.");
 
-        // 🕐 Cek overlap baru
-        boolean hasOverlap = rentalBookingRepository.findAll().stream()
-                .filter(b -> !b.getId().equals(id))
-                .filter(b -> b.getVehicle().getId().equals(vehicle.getId()))
-                .anyMatch(b -> b.getDeletedAt() == null &&
-                        !"Done".equalsIgnoreCase(b.getStatus()) &&
-                        !(request.getDropOffTime().isBefore(b.getPickUpTime()) ||
-                                request.getPickUpTime().isAfter(b.getDropOffTime())));
+        // 🕐 Cek overlap baru (Gunakan query yang sudah kita buat)
+        boolean hasOverlap = rentalBookingRepository.existsOverlapExcludingId(
+            vehicle,
+            request.getPickUpTime(),
+            request.getDropOffTime(),
+            id // id booking ini untuk dikecualikan
+        );
 
         if (hasOverlap)
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Vehicle already booked in that time range.");
@@ -309,17 +329,15 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
         booking.setTotalPrice(total);
         booking.setUpdatedAt(LocalDateTime.now());
 
+        // --- ⬇️ TAMBAHKAN DUA BARIS INI ⬇️ ---
+        booking.setCapacityNeeded(request.getCapacityNeeded());
+        booking.setTransmissionNeeded(request.getTransmissionNeeded());
+        // --- ⬆️ PERBAIKAN SELESAI ⬆️ ---
+
         var saved = rentalBookingRepository.save(booking);
 
-        return RentalBookingResponseDTO.builder()
-                .id(saved.getId())
-                .vehicleId(vehicle.getId())
-                .vehicleName(vehicle.getBrand() + " " + vehicle.getModel())
-                .pickUpLocation(saved.getPickUpLocation())
-                .dropOffLocation(saved.getDropOffLocation())
-                .totalPrice(saved.getTotalPrice())
-                .status(saved.getStatus())
-                .build();
+        // Kirim kembali respons lengkap
+        return getBookingById(saved.getId()); // Panggil getBookingById agar DTO lengkap
         }
 
 
@@ -341,7 +359,10 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
 
         // 🟢 Upcoming → Ongoing
         if ("Upcoming".equalsIgnoreCase(currentStatus) && "Ongoing".equalsIgnoreCase(newStatus)) {
-        boolean devMode = true; // ⚙️ set true for testing
+        
+        // --- ⬇️ PERBAIKAN DI SINI ⬇️ ---
+        boolean devMode = false; // ⚙️ set false to enable validation
+        // --- ⬆️ PERBAIKAN DI SINI ⬆️ ---
 
         if (!devMode) {
                 if (now.isBefore(booking.getPickUpTime()))
