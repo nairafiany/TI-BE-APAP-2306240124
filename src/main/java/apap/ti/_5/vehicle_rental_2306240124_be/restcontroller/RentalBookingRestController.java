@@ -151,6 +151,14 @@ public class RentalBookingRestController {
         );
     }
 
+    @GetMapping("/chart")
+    public ResponseEntity<?> getBookingChart(
+            @RequestParam(defaultValue = "monthly") String period,
+            @RequestParam(defaultValue = "2025") int year
+    ) {
+        var result = rentalBookingRestService.getBookingChartData(period, year);
+        return ResponseEntity.ok(result);
+    }
 
 
 }

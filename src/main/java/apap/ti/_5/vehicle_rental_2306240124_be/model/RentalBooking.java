@@ -2,10 +2,12 @@ package apap.ti._5.vehicle_rental_2306240124_be.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 
 @Data
 @Entity
@@ -13,7 +15,12 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
+@JsonIdentityInfo(
+    generator = ObjectIdGenerators.PropertyGenerator.class,
+    property = "id"
+)
 public class RentalBooking {
+
     @Id
     private String id; // format: VRxxxxxx
 
@@ -45,9 +52,9 @@ public class RentalBooking {
     )
     private List<RentalAddOn> addOns = new ArrayList<>();
 
-
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime deletedAt;
 
     @PrePersist
     protected void onCreate() {
@@ -59,7 +66,4 @@ public class RentalBooking {
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
-
-    private LocalDateTime deletedAt;
-
 }

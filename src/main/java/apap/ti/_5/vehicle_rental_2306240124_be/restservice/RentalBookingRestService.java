@@ -9,6 +9,7 @@ import apap.ti._5.vehicle_rental_2306240124_be.restdto.response.VehicleResponseD
 import apap.ti._5.vehicle_rental_2306240124_be.restdto.response.RentalBookingResponseDTO;
 
 import java.util.List;
+import java.util.Map;
 
 public interface RentalBookingRestService {
 
@@ -25,5 +26,6 @@ public interface RentalBookingRestService {
     RentalBookingResponseDTO updateBookingStatus(String id, RentalBookingUpdateStatusRequestDTO request);
     RentalBookingResponseDTO updateBookingAddOns(String id, RentalBookingUpdateAddOnsRequestDTO request);
     RentalBookingResponseDTO cancelBooking(String id);
+    Map<String, Object> getBookingChartData(String period, int year); 
 
 }

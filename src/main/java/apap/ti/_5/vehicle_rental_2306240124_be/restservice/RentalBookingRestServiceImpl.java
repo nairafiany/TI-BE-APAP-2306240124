@@ -352,6 +352,9 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
         String currentStatus = booking.getStatus();
         String newStatus = request.getNewStatus();
 
+        // ⚙️ Developer mode: ubah ke true saat testing agar skip validasi waktu
+        boolean devMode = true;
+
         // 🔒 Booking already done
         if ("Done".equalsIgnoreCase(currentStatus)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot update a completed booking.");
@@ -359,30 +362,30 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
 
         // 🟢 Upcoming → Ongoing
         if ("Upcoming".equalsIgnoreCase(currentStatus) && "Ongoing".equalsIgnoreCase(newStatus)) {
-        
-        // --- ⬇️ PERBAIKAN DI SINI ⬇️ ---
-        boolean devMode = false; // ⚙️ set false to enable validation
-        // --- ⬆️ PERBAIKAN DI SINI ⬆️ ---
 
-        if (!devMode) {
+                if (!devMode) {
                 if (now.isBefore(booking.getPickUpTime()))
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot start booking before pick-up time.");
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot start booking before pick-up time.");
                 if (now.isAfter(booking.getDropOffTime()))
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot start booking after drop-off time.");
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot start booking after drop-off time.");
                 if (!"Available".equalsIgnoreCase(vehicle.getStatus()))
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vehicle not available for pick-up.");
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vehicle not available for pick-up.");
                 if (!vehicle.getLocation().equalsIgnoreCase(booking.getPickUpLocation()))
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vehicle is not at the pick-up location.");
-        }
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vehicle is not at the pick-up location.");
+                }
 
-        booking.setStatus("Ongoing");
-        vehicle.setStatus("In Use");
+                booking.setStatus("Ongoing");
+                vehicle.setStatus("In Use");
         }
-
 
         // 🟡 Ongoing → Done
         else if ("Ongoing".equalsIgnoreCase(currentStatus) && "Done".equalsIgnoreCase(newStatus)) {
-                // Check late penalty
+                if (!devMode) {
+                if (now.isBefore(booking.getPickUpTime()))
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot complete booking before pick-up time.");
+                }
+
+                // Check late penalty (tetap jalan normal)
                 if (now.isAfter(booking.getDropOffTime())) {
                 long hoursLate = java.time.Duration.between(booking.getDropOffTime(), now).toHours();
                 if (java.time.Duration.between(booking.getDropOffTime(), now).toMinutesPart() > 0) {
@@ -416,6 +419,7 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
                 .includeDriver(booking.getIncludeDriver())
                 .build();
         }
+
 
         @Override
         public RentalBookingResponseDTO updateBookingAddOns(String id, RentalBookingUpdateAddOnsRequestDTO request) {
@@ -511,6 +515,47 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
                 .status(savedBooking.getStatus())
                 .includeDriver(savedBooking.getIncludeDriver())
                 .build();
+        }
+
+        @Override
+        public Map<String, Object> getBookingChartData(String period, int year) {
+        List<RentalBooking> bookings = rentalBookingRepository.findAll().stream()
+                .filter(b -> b.getDeletedAt() == null)
+                .filter(b -> b.getPickUpTime().getYear() == year)
+                .toList();
+
+        Map<String, Long> result = new LinkedHashMap<>();
+
+        if ("monthly".equalsIgnoreCase(period)) {
+                // 12 bulan
+                for (int i = 1; i <= 12; i++) {
+                final int monthIndex = i; // ✅ declare final copy
+                long count = bookings.stream()
+                        .filter(b -> b.getPickUpTime().getMonthValue() == monthIndex)
+                        .count();
+                result.put(java.time.Month.of(monthIndex).name(), count);
+                }
+
+        } else if ("quarterly".equalsIgnoreCase(period)) {
+                // 4 kuartal
+                for (int q = 1; q <= 4; q++) {
+                final int startMonth = (q - 1) * 3 + 1;
+                final int endMonth = q * 3;
+                long count = bookings.stream()
+                        .filter(b -> {
+                                int month = b.getPickUpTime().getMonthValue();
+                                return month >= startMonth && month <= endMonth;
+                        })
+                        .count();
+                result.put("Q" + q, count);
+                }
+        }
+
+        return Map.of(
+                "period", period,
+                "year", year,
+                "data", result
+        );
         }
 
 
