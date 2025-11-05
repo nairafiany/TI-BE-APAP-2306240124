@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
-
+import java.util.List; // <<< PASTIKAN IMPORT INI ADA
 
 @Data
 @Builder
@@ -17,9 +17,16 @@ public class RentalBookingResponseDTO {
     private String vehicleName;
     private String pickUpLocation;
     private String dropOffLocation;
-    private LocalDateTime pickUpTime;   // ✅ Added
-    private LocalDateTime dropOffTime;  // ✅ Added
+    private LocalDateTime pickUpTime;
+    private LocalDateTime dropOffTime;
     private Double totalPrice;
     private String status;
     private Boolean includeDriver;
+
+    // [FIX] TAMBAHKAN PROPERTI INI
+    private List<RentalAddOnResponseDTO> listOfAddOns;
+    
+    // [FIX] TAMBAHKAN JUGA INI AGAR LENGKAP UNTUK FORM UPDATE
+    private Integer capacityNeeded;
+    private String transmissionNeeded;
 }

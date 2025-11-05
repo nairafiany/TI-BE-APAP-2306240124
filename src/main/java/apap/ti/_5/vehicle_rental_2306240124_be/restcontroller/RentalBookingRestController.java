@@ -106,7 +106,7 @@ public class RentalBookingRestController {
                 .build());
     }
 
-    @PutMapping("/bookings/{id}/update-status")
+    @PutMapping("/{id}/update-status")
     public ResponseEntity<Map<String, Object>> updateBookingStatus(
             @PathVariable String id,
             @RequestBody RentalBookingUpdateStatusRequestDTO request
