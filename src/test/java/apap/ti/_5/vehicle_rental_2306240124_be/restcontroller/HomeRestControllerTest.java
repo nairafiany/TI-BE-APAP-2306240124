@@ -24,7 +24,7 @@ public class HomeRestControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-
+    // --- Repositories dari Controller ---
     @MockBean
     private VehicleRepository vehicleRepository;
 
@@ -34,13 +34,15 @@ public class HomeRestControllerTest {
     @MockBean
     private RentalBookingRepository bookingRepository;
 
+    // --- Mocks untuk Konteks Aplikasi (Mengatasi Failed to Load Context) ---
     @MockBean
     private RentalAddOnRepository rentalAddOnRepository; 
     @MockBean
     private JpaMetamodelMappingContext jpaMappingContext;
+
     @Test
-    public void testGetHomeSummary_shouldReturnSummaryMap() throws Exception {
-   
+    public void testGetHomeSummary_shouldReturnSummaryMapInBaseResponse() throws Exception {
+        // --- ARRANGE ---
         long mockVehicleCount = 15L;
         long mockVendorCount = 3L;
         long mockBookingCount = 42L;
@@ -49,24 +51,30 @@ public class HomeRestControllerTest {
         when(vendorRepository.count()).thenReturn(mockVendorCount);
         when(bookingRepository.count()).thenReturn(mockBookingCount);
 
-
-    
+        // --- ACT & ASSERT ---
         mockMvc.perform(get("/api/home/summary")
-                        .contentType(MediaType.APPLICATION_JSON))
+                                .contentType(MediaType.APPLICATION_JSON))
 
-
+                // 1. Verifikasi Status HTTP 200 (OK)
                 .andExpect(status().isOk())
 
-
+                // 2. Verifikasi Tipe Konten
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
 
-           
-                .andExpect(jsonPath("$.totalVehicles", is((int) mockVehicleCount)))
-                .andExpect(jsonPath("$.totalVendors", is((int) mockVendorCount)))
-                .andExpect(jsonPath("$.totalBookings", is((int) mockBookingCount)));
+                // 3. Verifikasi Struktur BaseResponse
+                .andExpect(jsonPath("$.status", is(200)))
+                .andExpect(jsonPath("$.message", is("Success fetching summary")))
+                .andExpect(jsonPath("$.timestamp").exists())
+                
+                // 4. Verifikasi Data (Data berada di dalam field 'data')
+                .andExpect(jsonPath("$.data").isMap())
+                
+                // 5. Verifikasi Nilai-nilai di dalam field 'data'
+                .andExpect(jsonPath("$.data.totalVehicles", is((int) mockVehicleCount)))
+                .andExpect(jsonPath("$.data.totalVendors", is((int) mockVendorCount)))
+                .andExpect(jsonPath("$.data.totalBookings", is((int) mockBookingCount)));
 
-
-   
+        // --- VERIFY ---
         verify(vehicleRepository, times(1)).count();
         verify(vendorRepository, times(1)).count();
         verify(bookingRepository, times(1)).count();
