@@ -29,10 +29,19 @@ public class RentalVendorRestController {
     }
 
     @GetMapping("/{id}/locations")
-    public ResponseEntity<BaseResponse<List<String>>> getVendorLocations(@PathVariable Long id) {
-        var vendor = vendorRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Vendor not found with id: " + id));
+    public ResponseEntity<BaseResponse<List<String>>> getVendorLocations(@PathVariable("id") Long id) {
+        var vendorOpt = vendorRepository.findById(id);
 
+        if (vendorOpt.isEmpty()) {
+            return ResponseEntity.status(404).body(BaseResponse.<List<String>>builder()
+                    .status(404)
+                    .message("Vendor not found with id: " + id)
+                    .timestamp(OffsetDateTime.now())
+                    .data(List.of())
+                    .build());
+        }
+
+        var vendor = vendorOpt.get();
         return ResponseEntity.ok(BaseResponse.<List<String>>builder()
                 .status(200)
                 .message("Success fetching vendor locations")
@@ -40,4 +49,5 @@ public class RentalVendorRestController {
                 .data(vendor.getListOfLocations())
                 .build());
     }
+
 }

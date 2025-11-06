@@ -35,10 +35,10 @@ public class VehicleRestController {
         );
     }
 
-    @GetMapping("/filter")
-    public ResponseEntity<BaseResponse<List<VehicleResponseDTO>>> getFilteredVehicles(
-            @RequestParam(required = false) String type,
-            @RequestParam(required = false) String keyword
+@GetMapping("/filter")
+public ResponseEntity<BaseResponse<List<VehicleResponseDTO>>> getFilteredVehicles(
+        @RequestParam(name = "type", required = false) String type,
+        @RequestParam(name = "keyword", required = false) String keyword
     ) {
         var data = vehicleRestService.getFilteredVehicles(type, keyword);
         return ResponseEntity.ok(

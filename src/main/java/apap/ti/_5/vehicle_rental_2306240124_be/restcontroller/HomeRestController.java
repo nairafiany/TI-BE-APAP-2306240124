@@ -18,11 +18,7 @@ public class HomeRestController {
     private final RentalVendorRepository vendorRepository;
     private final RentalBookingRepository bookingRepository;
 
-    /**
-     * Endpoint: GET /api/home/summary
-     * Digunakan oleh halaman Beranda (Home)
-     * untuk menampilkan total kendaraan, vendor, dan pesanan.
-     */
+
     @GetMapping("/summary")
     public ResponseEntity<Map<String, Long>> getHomeSummary() {
         long totalVehicles = vehicleRepository.count();

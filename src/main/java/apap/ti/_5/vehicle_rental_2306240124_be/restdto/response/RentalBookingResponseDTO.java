@@ -23,10 +23,8 @@ public class RentalBookingResponseDTO {
     private String status;
     private Boolean includeDriver;
 
-    // [FIX] TAMBAHKAN PROPERTI INI
     private List<RentalAddOnResponseDTO> listOfAddOns;
     
-    // [FIX] TAMBAHKAN JUGA INI AGAR LENGKAP UNTUK FORM UPDATE
     private Integer capacityNeeded;
     private String transmissionNeeded;
 }

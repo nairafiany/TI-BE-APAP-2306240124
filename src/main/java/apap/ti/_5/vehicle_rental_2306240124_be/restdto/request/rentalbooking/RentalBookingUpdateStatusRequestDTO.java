@@ -14,5 +14,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class RentalBookingUpdateStatusRequestDTO {
-    private String newStatus; // example: "Ongoing" or "Done"
+    private String newStatus; 
 }

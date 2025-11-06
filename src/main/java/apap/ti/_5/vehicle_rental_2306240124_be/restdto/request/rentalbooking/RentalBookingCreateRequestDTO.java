@@ -8,9 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * DTO untuk membuat pesanan baru (halaman kedua setelah memilih kendaraan & add-ons)
- */
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -25,8 +23,6 @@ public class RentalBookingCreateRequestDTO {
     private Boolean includeDriver;
     private List<Long> addOnIds;
 
-    // --- ⬇️ TAMBAHKAN DUA FIELD INI ⬇️ ---
     private Integer capacityNeeded;
     private String transmissionNeeded;
-    // --- ⬆️ PERBAIKAN SELESAI ⬆️ ---
 }

@@ -23,7 +23,7 @@ public class VehicleMapper {
                 .type(vehicle.getType())
                 .brand(vehicle.getBrand())
                 .model(vehicle.getModel())
-                .year(vehicle.getProductionYear()) // 🧩 renamed field
+                .year(vehicle.getProductionYear())
                 .location(vehicle.getLocation())
                 .licensePlate(vehicle.getLicensePlate())
                 .capacity(vehicle.getCapacity())

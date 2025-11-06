@@ -11,5 +11,5 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class RentalBookingUpdateAddOnsRequestDTO {
-    private List<Long> addOnIds; // daftar ID add-ons baru yang dipilih user
+    private List<Long> addOnIds; 
 }

@@ -139,7 +139,7 @@ public class VehicleRestServiceImpl implements VehicleRestService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Vehicle not found with id: " + id));
 
-        // 🛑 1️⃣ Cegah update kalau kendaraan masih punya booking aktif
+
         boolean hasActiveBooking = vehicle.getBookings().stream()
                 .anyMatch(b -> (
                         "Upcoming".equalsIgnoreCase(b.getStatus()) ||
@@ -151,7 +151,7 @@ public class VehicleRestServiceImpl implements VehicleRestService {
                     "Vehicle cannot be updated while it has active bookings (Upcoming/Ongoing).");
         }
 
-        // ✅ 2️⃣ Validasi enum-like fields
+
         String type = validateChoice(request.getType(), "type", ALLOWED_TYPES);
         String transmission = validateChoice(request.getTransmission(), "transmission", ALLOWED_TRANSMISSIONS);
         String fuelType = validateChoice(request.getFuelType(), "fuelType", ALLOWED_FUEL_TYPES);
@@ -166,7 +166,7 @@ public class VehicleRestServiceImpl implements VehicleRestService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tahun produksi tidak boleh melebihi tahun saat ini.");
         }
 
-        // ✅ 3️⃣ Validasi umum
+
         if (!vendorRepository.existsById(vehicle.getRentalVendor().getId())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, 
                 "Vendor not found for this vehicle.");
@@ -176,14 +176,14 @@ public class VehicleRestServiceImpl implements VehicleRestService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Location is required.");
         }
 
-        // ✅ 4️⃣ Validasi lokasi sesuai vendor
+   
         var vendor = vehicle.getRentalVendor();
         if (!vendor.getListOfLocations().contains(request.getLocation())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Lokasi '" + request.getLocation() + "' tidak tersedia untuk vendor " + vendor.getName());
         }
 
-        // ✅ 5️⃣ Update semua field dari request
+      
         vehicle.setType(type);
         vehicle.setBrand(request.getBrand());
         vehicle.setModel(request.getModel());
@@ -193,9 +193,9 @@ public class VehicleRestServiceImpl implements VehicleRestService {
         vehicle.setTransmission(transmission);
         vehicle.setFuelType(fuelType);
         vehicle.setPrice(request.getPrice());
-        vehicle.setStatus(status); // ✅ Now this will properly update
+        vehicle.setStatus(status); 
 
-        // ✅ 6️⃣ Update waktu modifikasi
+  
         vehicle.setUpdatedAt(LocalDateTime.now());
 
         var updated = vehicleRepository.save(vehicle);

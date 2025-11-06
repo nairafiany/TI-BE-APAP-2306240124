@@ -33,17 +33,15 @@ public class RentalBookingRestControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    // ObjectMapper untuk mengubah objek Java menjadi JSON string untuk body request
+
     @Autowired
     private ObjectMapper objectMapper;
 
-    // --- DEPENDENSI UTAMA ---
-    // Service yang digunakan oleh controller ini
+  
     @MockBean
     private RentalBookingRestService rentalBookingRestService;
 
-    // --- MOCK TAMBAHAN UNTUK MENGATASI ERROR APPLICATION CONTEXT ---
-    // (Berdasarkan error sebelumnya dari 'loadDummyData' dan '@EnableJpaAuditing')
+ 
     @MockBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
     @MockBean
@@ -54,16 +52,13 @@ public class RentalBookingRestControllerTest {
     private VehicleRepository vehicleRepository;
     @MockBean
     private RentalBookingRepository rentalBookingRepository;
-    // --- (Tambahkan repository lain di sini jika 'loadDummyData' masih error) ---
 
 
-    // Data palsu yang akan digunakan di banyak tes
     private RentalBookingResponseDTO mockBooking;
     private final String MOCK_BOOKING_ID = "BOOK-12345";
 
     @BeforeEach
     void setUp() {
-        // Setup data mock global sebelum setiap tes
         mockBooking = new RentalBookingResponseDTO();
         mockBooking.setId(MOCK_BOOKING_ID);
         mockBooking.setStatus("CONFIRMED");
@@ -72,10 +67,10 @@ public class RentalBookingRestControllerTest {
 
     @Test
     void testGetAllBookings_shouldReturnListOfBookings() throws Exception {
-        // Arrange
+  
         when(rentalBookingRestService.getAllBookings()).thenReturn(List.of(mockBooking));
 
-        // Act & Assert
+     
         mockMvc.perform(get("/api/bookings"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status", is(200)))
@@ -87,10 +82,10 @@ public class RentalBookingRestControllerTest {
 
     @Test
     void testGetBookingById_shouldReturnBooking_whenFound() throws Exception {
-        // Arrange
+   
         when(rentalBookingRestService.getBookingById(MOCK_BOOKING_ID)).thenReturn(mockBooking);
 
-        // Act & Assert
+     
         mockMvc.perform(get("/api/bookings/" + MOCK_BOOKING_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status", is(200)))
@@ -100,11 +95,11 @@ public class RentalBookingRestControllerTest {
 
     @Test
     void testGetBookingById_shouldReturnNotFound_whenNotFound() throws Exception {
-        // Arrange
+ 
         String notFoundId = "BOOK-NOT-FOUND";
         when(rentalBookingRestService.getBookingById(notFoundId)).thenReturn(null);
 
-        // Act & Assert
+    
         mockMvc.perform(get("/api/bookings/" + notFoundId))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status", is(404)))
@@ -114,9 +109,9 @@ public class RentalBookingRestControllerTest {
 
     @Test
     void testCreateBooking_shouldReturnCreatedBooking() throws Exception {
-        // Arrange
+      
         RentalBookingCreateRequestDTO createRequest = new RentalBookingCreateRequestDTO();
-        // (Set field untuk createRequest jika perlu, misal: createRequest.setVehicleId(1L);)
+  
         
         when(rentalBookingRestService.createBooking(any(RentalBookingCreateRequestDTO.class))).thenReturn(mockBooking);
 
@@ -239,10 +234,8 @@ public class RentalBookingRestControllerTest {
         // Arrange
         String period = "monthly";
         int year = 2025;
-        // [FIX] Ubah deklarasi tipe map menjadi Map<String, Object>
         Map<String, Object> chartData = Map.of("January", 10L, "February", 15L);
 
-        // Error akan hilang karena tipe data sekarang sudah cocok
         when(rentalBookingRestService.getBookingChartData(period, year)).thenReturn(chartData); 
 
         // Act & Assert

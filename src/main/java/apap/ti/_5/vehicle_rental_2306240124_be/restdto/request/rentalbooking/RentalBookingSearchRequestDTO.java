@@ -13,6 +13,5 @@ public class RentalBookingSearchRequestDTO {
     private Integer capacityNeeded;
     private String transmissionNeeded;
 
-    // TAMBAHKAN FIELD INI
-    private String bookingIdToExclude; // Digunakan saat update untuk mengabaikan booking saat ini
+    private String bookingIdToExclude; 
 }
