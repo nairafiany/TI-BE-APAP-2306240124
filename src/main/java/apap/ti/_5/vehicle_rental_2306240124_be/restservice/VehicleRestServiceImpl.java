@@ -70,41 +70,48 @@ public class VehicleRestServiceImpl implements VehicleRestService {
 
     @Override
     public VehicleResponseDTO createVehicle(VehicleCreateRequestDTO request) {
-        var vendor = vendorRepository.findById(request.getRentalVendorId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Vendor not found with id: " + request.getRentalVendorId()));
+    var vendor = vendorRepository.findById(request.getRentalVendorId())
+            .orElseThrow(() -> new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Vendor not found with id: " + request.getRentalVendorId()));
 
-        if (vehicleRepository.existsByLicensePlate(request.getLicensePlate())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "License plate already exists");
-        }
+    if (vehicleRepository.existsByLicensePlate(request.getLicensePlate())) {
+        throw new ResponseStatusException(HttpStatus.CONFLICT, "License plate already exists");
+    }
 
-        String type = validateChoice(request.getType(), "type", ALLOWED_TYPES);
-        String transmission = validateChoice(request.getTransmission(), "transmission", ALLOWED_TRANSMISSIONS);
-        String fuelType = validateChoice(request.getFuelType(), "fuelType", ALLOWED_FUEL_TYPES);
+    String type = validateChoice(request.getType(), "type", ALLOWED_TYPES);
+    String transmission = validateChoice(request.getTransmission(), "transmission", ALLOWED_TRANSMISSIONS);
+    String fuelType = validateChoice(request.getFuelType(), "fuelType", ALLOWED_FUEL_TYPES);
 
-        if (request.getBrand() == null || request.getBrand().isBlank())
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "brand is required.");
-        if (request.getModel() == null || request.getModel().isBlank())
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "model is required.");
-        if (request.getYear() == null)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "productionYear is required.");
-        if (request.getLocation() == null || request.getLocation().isBlank())
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "location is required.");
-        if (request.getLicensePlate() == null || request.getLicensePlate().isBlank())
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "licensePlate is required.");
-        if (request.getCapacity() == null || request.getCapacity() <= 0)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "capacity must be positive.");
-        if (request.getPrice() == null || request.getPrice() <= 0)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "price must be positive.");
+    if (request.getBrand() == null || request.getBrand().isBlank())
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "brand is required.");
+    if (request.getModel() == null || request.getModel().isBlank())
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "model is required.");
+    
+    if (request.getYear() == null)
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "productionYear is required.");
+    
+    int currentYear = java.time.Year.now().getValue();
+    if (request.getYear() > currentYear) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tahun produksi tidak boleh melebihi tahun saat ini.");
+    }
 
-        if (!vendor.getListOfLocations().contains(request.getLocation())) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Lokasi '" + request.getLocation() + "' tidak tersedia untuk vendor " + vendor.getName()
-            );
-        }
+    if (request.getLocation() == null || request.getLocation().isBlank())
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "location is required.");
+    if (request.getLicensePlate() == null || request.getLicensePlate().isBlank())
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "licensePlate is required.");
+    if (request.getCapacity() == null || request.getCapacity() <= 0)
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "capacity must be positive.");
+    if (request.getPrice() == null || request.getPrice() <= 0)
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "price must be positive.");
 
-        String vehicleId = String.format("VEH%04d", vehicleRepository.count() + 1);
+    if (!vendor.getListOfLocations().contains(request.getLocation())) {
+        throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Lokasi '" + request.getLocation() + "' tidak tersedia untuk vendor " + vendor.getName()
+        );
+    }
+
+    String vehicleId = String.format("VEH%04d", vehicleRepository.count() + 1);
 
         var vehicle = Vehicle.builder()
                 .id(vehicleId)
@@ -150,6 +157,14 @@ public class VehicleRestServiceImpl implements VehicleRestService {
         String fuelType = validateChoice(request.getFuelType(), "fuelType", ALLOWED_FUEL_TYPES);
         String status = validateChoice(request.getStatus(), "status", ALLOWED_STATUSES); 
         // e.g. ALLOWED_STATUSES = List.of("Available", "In Use", "Unavailable")
+        if (request.getYear() == null) {
+         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "productionYear is required.");
+    }
+
+        int currentYear = java.time.Year.now().getValue();
+        if (request.getYear() > currentYear) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tahun produksi tidak boleh melebihi tahun saat ini.");
+        }
 
         // ✅ 3️⃣ Validasi umum
         if (!vendorRepository.existsById(vehicle.getRentalVendor().getId())) {

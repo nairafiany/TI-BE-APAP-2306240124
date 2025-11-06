@@ -53,7 +53,7 @@ public class VehicleRestController {
 
 
     @GetMapping("/{id}")
-    public ResponseEntity<BaseResponse<VehicleResponseDTO>> getVehicleById(@PathVariable String id) {
+    public ResponseEntity<BaseResponse<VehicleResponseDTO>> getVehicleById(@PathVariable("id") String id) {
         try {
             var vehicle = vehicleRestService.getVehicleById(id);
             return ResponseEntity.ok(
@@ -90,7 +90,7 @@ public class VehicleRestController {
 
         @PutMapping("/{id}")
         public ResponseEntity<BaseResponse<VehicleResponseDTO>> updateVehicle(
-                @PathVariable String id,
+                @PathVariable("id") String id,
                 @Valid @RequestBody VehicleUpdateRequestDTO request
         ) {
         try {
@@ -122,7 +122,7 @@ public class VehicleRestController {
 
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<BaseResponse<Void>> deleteVehicle(@PathVariable String id) {
+    public ResponseEntity<BaseResponse<Void>> deleteVehicle(@PathVariable("id") String id) {
         try {
             vehicleRestService.deleteVehicle(id);
             return ResponseEntity.ok(

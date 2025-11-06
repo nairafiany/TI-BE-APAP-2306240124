@@ -353,7 +353,7 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
         String newStatus = request.getNewStatus();
 
         // ⚙️ Developer mode: ubah ke true saat testing agar skip validasi waktu
-        boolean devMode = true;
+        boolean devMode = false;
 
         // 🔒 Booking already done
         if ("Done".equalsIgnoreCase(currentStatus)) {

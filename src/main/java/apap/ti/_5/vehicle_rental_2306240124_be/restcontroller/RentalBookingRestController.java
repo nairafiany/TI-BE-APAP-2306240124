@@ -37,7 +37,7 @@ public class RentalBookingRestController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<BaseResponse<RentalBookingResponseDTO>> getBookingById(@PathVariable String id) {
+    public ResponseEntity<BaseResponse<RentalBookingResponseDTO>> getBookingById(@PathVariable("id") String id) {
         var booking = rentalBookingRestService.getBookingById(id);
         if (booking == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -94,7 +94,7 @@ public class RentalBookingRestController {
 
     @PutMapping("/{id}/update-details")
     public ResponseEntity<BaseResponse<RentalBookingResponseDTO>> updateBookingDetails(
-            @PathVariable String id,
+            @PathVariable("id") String id,
             @Valid @RequestBody RentalBookingUpdateDetailsRequestDTO request) {
         var updated = rentalBookingRestService.updateBookingDetails(id, request);
         return ResponseEntity.ok(
@@ -108,7 +108,7 @@ public class RentalBookingRestController {
 
     @PutMapping("/{id}/update-status")
     public ResponseEntity<Map<String, Object>> updateBookingStatus(
-            @PathVariable String id,
+            @PathVariable("id") String id,
             @RequestBody RentalBookingUpdateStatusRequestDTO request
     ) {
         var updatedBooking = rentalBookingRestService.updateBookingStatus(id, request);
@@ -124,7 +124,7 @@ public class RentalBookingRestController {
 
     @PutMapping("/{id}/update-addons")
     public ResponseEntity<BaseResponse<RentalBookingResponseDTO>> updateBookingAddOns(
-            @PathVariable String id,
+            @PathVariable("id") String id,
             @RequestBody RentalBookingUpdateAddOnsRequestDTO request
     ) {
         var updated = rentalBookingRestService.updateBookingAddOns(id, request);
@@ -139,7 +139,7 @@ public class RentalBookingRestController {
     }
 
     @DeleteMapping("/{id}/delete")
-    public ResponseEntity<BaseResponse<RentalBookingResponseDTO>> cancelBooking(@PathVariable String id) {
+    public ResponseEntity<BaseResponse<RentalBookingResponseDTO>> cancelBooking(@PathVariable("id") String id) {
         var cancelled = rentalBookingRestService.cancelBooking(id);
         return ResponseEntity.ok(
             BaseResponse.<RentalBookingResponseDTO>builder()
@@ -153,12 +153,13 @@ public class RentalBookingRestController {
 
     @GetMapping("/chart")
     public ResponseEntity<?> getBookingChart(
-            @RequestParam(defaultValue = "monthly") String period,
-            @RequestParam(defaultValue = "2025") int year
+            @RequestParam(name = "period", defaultValue = "monthly") String period,
+            @RequestParam(name = "year", defaultValue = "2025") int year
     ) {
         var result = rentalBookingRestService.getBookingChartData(period, year);
         return ResponseEntity.ok(result);
     }
+
 
 
 }
