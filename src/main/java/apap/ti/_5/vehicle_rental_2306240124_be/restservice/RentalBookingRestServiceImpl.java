@@ -505,29 +505,27 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
         public Map<String, Object> getBookingChartData(String period, int year) {
         List<RentalBooking> bookings = rentalBookingRepository.findAll().stream()
                 .filter(b -> b.getDeletedAt() == null)
-                .filter(b -> b.getPickUpTime().getYear() == year)
+                .filter(b -> b.getCreatedAt() != null && b.getCreatedAt().getYear() == year)
                 .toList();
 
         Map<String, Long> result = new LinkedHashMap<>();
 
         if ("monthly".equalsIgnoreCase(period)) {
-                // 12 bulan
                 for (int i = 1; i <= 12; i++) {
-                final int monthIndex = i; 
+                final int monthIndex = i;
                 long count = bookings.stream()
-                        .filter(b -> b.getPickUpTime().getMonthValue() == monthIndex)
+                        .filter(b -> b.getCreatedAt().getMonthValue() == monthIndex)
                         .count();
                 result.put(java.time.Month.of(monthIndex).name(), count);
                 }
 
         } else if ("quarterly".equalsIgnoreCase(period)) {
-             
                 for (int q = 1; q <= 4; q++) {
                 final int startMonth = (q - 1) * 3 + 1;
                 final int endMonth = q * 3;
                 long count = bookings.stream()
                         .filter(b -> {
-                                int month = b.getPickUpTime().getMonthValue();
+                                int month = b.getCreatedAt().getMonthValue();
                                 return month >= startMonth && month <= endMonth;
                         })
                         .count();
@@ -541,6 +539,7 @@ public class RentalBookingRestServiceImpl implements RentalBookingRestService {
                 "data", result
         );
         }
+
 
 
 }
