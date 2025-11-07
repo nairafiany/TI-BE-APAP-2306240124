@@ -470,33 +470,36 @@ class RentalBookingRestServiceTest {
 
     @Test
     void getBookingChartData_Quarterly() {
-        var bookingQ1 = RentalBooking.builder().pickUpTime(LocalDateTime.of(2025, 2, 1, 10, 0)).build();
-        var bookingQ2 = RentalBooking.builder().pickUpTime(LocalDateTime.of(2025, 4, 1, 10, 0)).build();
-        var bookingQ2_2 = RentalBooking.builder().pickUpTime(LocalDateTime.of(2025, 6, 1, 10, 0)).build();
-        var bookingQ4 = RentalBooking.builder().pickUpTime(LocalDateTime.of(2025, 11, 1, 10, 0)).build();
-        
-        when(rentalBookingRepository.findAll()).thenReturn(List.of(bookingQ1, bookingQ2, bookingQ2_2, bookingQ4));
+        var bookingQ1 = RentalBooking.builder().createdAt(LocalDateTime.of(2025, 2, 1, 10, 0)).build();
+        var bookingQ2 = RentalBooking.builder().createdAt(LocalDateTime.of(2025, 4, 1, 10, 0)).build();
+        var bookingQ2_2 = RentalBooking.builder().createdAt(LocalDateTime.of(2025, 6, 1, 10, 0)).build();
+        var bookingQ4 = RentalBooking.builder().createdAt(LocalDateTime.of(2025, 11, 1, 10, 0)).build();
+
+        when(rentalBookingRepository.findAll())
+                .thenReturn(List.of(bookingQ1, bookingQ2, bookingQ2_2, bookingQ4));
 
         var result = service.getBookingChartData("quarterly", 2025);
         var data = (Map<String, Long>) result.get("data");
 
         assertEquals(1L, data.get("Q1"));
         assertEquals(2L, data.get("Q2"));
-        assertEquals(0L, data.get("Q3")); 
-        assertEquals(1L, data.get("Q4")); 
+        assertEquals(0L, data.get("Q3"));
+        assertEquals(1L, data.get("Q4"));
     }
-    
+
     @Test
     void getBookingChartData_FilterByYear() {
-        var booking2025 = RentalBooking.builder().pickUpTime(LocalDateTime.of(2025, 1, 1, 10, 0)).build();
-        var booking2024 = RentalBooking.builder().pickUpTime(LocalDateTime.of(2024, 1, 1, 10, 0)).build();
-        
-        when(rentalBookingRepository.findAll()).thenReturn(List.of(booking2025, booking2024));
+        var booking2025 = RentalBooking.builder().createdAt(LocalDateTime.of(2025, 1, 1, 10, 0)).build();
+        var booking2024 = RentalBooking.builder().createdAt(LocalDateTime.of(2024, 1, 1, 10, 0)).build();
+
+        when(rentalBookingRepository.findAll())
+                .thenReturn(List.of(booking2025, booking2024));
 
         var result = service.getBookingChartData("monthly", 2024);
         var data = (Map<String, Long>) result.get("data");
 
-        assertEquals(1L, data.get("JANUARY")); 
-        assertEquals(0L, data.get("FEBRUARY")); 
+        assertEquals(1L, data.get("JANUARY"));
+        assertEquals(0L, data.get("FEBRUARY"));
     }
+
 }
