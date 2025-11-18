@@ -45,7 +45,6 @@ spec:
                   # Nama Secret yang akan dibuat oleh CI/CD
                   name: vehiclerental-be-secret
                   key: DATABASE_PASSWORD
-            # Mengambil JWT secret dari Secret
             # TAMBAHAN: Mengambil CORS origins dari Secret
             - name: CORS_ALLOWED_ORIGINS
               valueFrom:
