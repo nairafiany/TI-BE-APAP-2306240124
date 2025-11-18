@@ -75,6 +75,7 @@ deploy:
   image: alpine:latest
 
   dependencies:
+    - build # <-- Tambahkan ini agar file k8s/ dan app.jar terbaca
     - docker-push
 
   before_script:
