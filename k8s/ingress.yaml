@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  # Nama Ingress untuk BE TI Anda
+  name: vehiclerental-be-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  rules:
+    # Domain untuk BE TI Anda
+    - host: 2306240124-be.hafizmuh.site
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                # Nama service BE TI (harus cocok dengan file service.yaml Anda)
+                name: vehiclerental-be-service
+                port:
+                  # Port service (biasanya 80 untuk HTTP)
+                  number: 80
