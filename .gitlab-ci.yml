@@ -13,34 +13,24 @@ variables:
 build:
   stage: build
   image: eclipse-temurin:21-jdk
-
-  # Cache agar Gradle wrapper tidak download ulang terus
   cache:
     key: gradle-cache
     paths:
       - .gradle/wrapper
       - .gradle/caches
-
   script:
-    # Tambah timeout Gradle -> lebih stabil
     - echo "systemProp.org.gradle.internal.http.connectionTimeout=60000" >> gradle.properties
     - echo "systemProp.org.gradle.internal.http.socketTimeout=60000" >> gradle.properties
-
     - chmod +x ./gradlew
     - ./gradlew clean build -x test --no-daemon
-
-    # Copy hasil build
+    # Pindahkan jar ke root agar mudah diakses
     - cp $(find build/libs -name '*.jar' | head -n 1) app.jar
-
   artifacts:
     paths:
       - app.jar
       - Dockerfile
-      - k8s/deployment.yaml
-      - k8s/service.yaml
-      - k8s/ingress.yaml
+      - k8s/ # Menyimpan folder k8s (deployment, service, ingress)
     expire_in: 1 hour
-
   only:
     - feat/praktikum-9
 
@@ -53,65 +43,75 @@ docker-push:
   services:
     - name: docker:24-dind
       command: ["--insecure-registry", "registry-1.docker.io"]
-
   dependencies:
     - build
-
   before_script:
     - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-
   script:
     - docker build -t $DOCKER_IMAGE_NAME:$IMAGE_TAG .
     - docker push $DOCKER_IMAGE_NAME:$IMAGE_TAG
-
   only:
     - feat/praktikum-9
 
 # ============================
-# 🔹 DEPLOY TO EC2 + K3S
+# 🔹 DEPLOY TO EC2 + K3S (FIXED)
 # ============================
 deploy:
   stage: deploy
   image: alpine:latest
-
   dependencies:
-    - build # <-- Tambahkan ini agar file k8s/ dan app.jar terbaca
+    - build # WAJIB: Mengambil folder k8s/ dari stage build
     - docker-push
-
   before_script:
     - apk add --no-cache openssh bash
     - mkdir -p ~/.ssh
     - echo "$EC2_SSH_KEY" > ~/.ssh/id_rsa
     - chmod 600 ~/.ssh/id_rsa
     - ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
-
   script:
-    - echo "Generating Kubernetes ConfigMap & Secret..."
+    - echo "Generating Kubernetes Manifests..."
 
-    # ConfigMap
+    # 1. Buat ConfigMap (Pakai cat EOF lebih aman daripada printf)
     - |
-      printf "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: vehiclerental-be-config\n  namespace: default\ndata:\n  DATABASE_URL_PROD: \"%s\"\n  DATABASE_USERNAME: \"%s\"\n" \
-      "$TI_BE_DATABASE_URL" "$TI_BE_DATABASE_USER" > configmap.yaml
+      cat <<EOF > configmap.yaml
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: vehiclerental-be-config
+        namespace: default
+      data:
+        DATABASE_URL_PROD: "$TI_BE_DATABASE_URL"
+        DATABASE_USERNAME: "$TI_BE_DATABASE_USER"
+      EOF
 
-    # Secret
+    # 2. Buat Secret
     - |
-      printf "apiVersion: v1\nkind: Secret\nmetadata:\n  name: vehiclerental-be-secret\n  namespace: default\ntype: Opaque\nstringData:\n  DATABASE_PASSWORD: \"%s\"\n  CORS_ALLOWED_ORIGINS: \"%s\"\n" \
-      "$TI_BE_DATABASE_PASS" "$TI_CORS_ORIGINS" > secret.yaml
+      cat <<EOF > secret.yaml
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: vehiclerental-be-secret
+        namespace: default
+      type: Opaque
+      stringData:
+        DATABASE_PASSWORD: "$TI_BE_DATABASE_PASS"
+        CORS_ALLOWED_ORIGINS: "$TI_CORS_ORIGINS"
+      EOF
 
-    # Replace image tag
+    # 3. Update Image Tag di deployment.yaml
     - sed "s|REPLACE_ME_TAG|$IMAGE_TAG|g" k8s/deployment.yaml > deployment.yaml
 
-    # Upload to EC2
+    # 4. Upload ke Server
+    # Kita buat satu baris perintah SCP agar tidak error karena enter/spasi
     - ssh $EC2_USER@$EC2_HOST "mkdir -p ~/app/vehiclerental-be/k8s"
-    - scp deployment.yaml configmap.yaml secret.yaml k8s/service.yaml k8s/ingress.yaml \
-      $EC2_USER@$EC2_HOST:~/app/vehiclerental-be/k8s/
+    - scp deployment.yaml configmap.yaml secret.yaml k8s/service.yaml k8s/ingress.yaml $EC2_USER@$EC2_HOST:~/app/vehiclerental-be/k8s/
 
-    # Apply K8S resources
+    # 5. Apply ke K3s & Restart Pod
     - |
       ssh $EC2_USER@$EC2_HOST "
         sudo k3s kubectl apply -f ~/app/vehiclerental-be/k8s/ &&
+        sudo k3s kubectl rollout restart deployment/vehiclerental-be -n default &&
         sudo k3s kubectl rollout status deployment/vehiclerental-be -n default
       "
-
   only:
     - feat/praktikum-9
