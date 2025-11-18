@@ -18,7 +18,9 @@ build:
     paths:
       - app.jar
       - Dockerfile
-      - k8s/ # Mengambil semua file dari folder k8s
+      - k8s/deployment.yaml
+      - k8s/service.yaml
+      - k8s/ingress.yaml
     expire_in: 1 hour
   only:
     # Mentrigger pipeline HANYA untuk branch TI
