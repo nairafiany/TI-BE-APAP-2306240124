@@ -9,9 +9,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class CorsConfig {
 
-    // 2. TAMBAHKAN INI UNTUK MEMBACA DARI ENV
     @Value("${CORS_ALLOWED_ORIGINS}")
-    private String[] allowedOrigins;
+    private String allowedOriginsString;
 
     @Bean
     public WebMvcConfigurer corsConfigurer() {
@@ -19,11 +18,8 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry
-                        // 3. (Opsional tapi disarankan) Sesuaikan path-nya
                         .addMapping("/**")
-                        // 4. UBAH INI
-                        .allowedOrigins(allowedOrigins) // <-- Ganti dari hardcode
-                        
+                        .allowedOrigins(allowedOriginsString.split(","))
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
                         .allowCredentials(true)
