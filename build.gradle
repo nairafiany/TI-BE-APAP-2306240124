@@ -9,6 +9,16 @@ plugins {
 group = 'io.naira'
 version = '0.0.1-SNAPSHOT'
 description = 'Sistem Informasi Dating - APP - Backend'
+// Pastikan hanya bootJar yang dihasilkan
+bootJar {
+    enabled = true
+}
+
+// Disable jar biasa supaya CI tidak pernah ambil file yang salah
+jar {
+    enabled = false
+}
+
 
 java {
 	toolchain {
