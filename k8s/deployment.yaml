@@ -1,24 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  # Nama deployment untuk TI Anda
   name: vehiclerental-be
   namespace: default
 spec:
   replicas: 1
   selector:
     matchLabels:
-      # Label yang harus cocok dengan template di bawah
       app: vehiclerental-be
   template:
     metadata:
       labels:
-        # Label untuk pod, digunakan oleh selector di atas
         app: vehiclerental-be
     spec:
       containers:
         - name: vehiclerental-be-container
-          # Image dari Docker Hub Anda. REPLACE_ME_TAG akan diisi oleh CI/CD
           image: nairafiany/vehiclerental-2306240124-be:REPLACE_ME_TAG
           ports:
             # Port internal yang diekspos oleh aplikasi Spring Boot Anda

@@ -20,8 +20,7 @@ public class CorsConfig {
             public void addCorsMappings(CorsRegistry registry) {
                 registry
                         // 3. (Opsional tapi disarankan) Sesuaikan path-nya
-                        .addMapping("/api/**") 
-                        
+                        .addMapping("/**")
                         // 4. UBAH INI
                         .allowedOrigins(allowedOrigins) // <-- Ganti dari hardcode
                         

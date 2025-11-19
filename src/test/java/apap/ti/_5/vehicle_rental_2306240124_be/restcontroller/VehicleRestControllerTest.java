@@ -197,7 +197,6 @@ public class VehicleRestControllerTest {
         // Act & Assert
         mockMvc.perform(put("/api/vehicles/" + MOCK_VEHICLE_ID)
                         .contentType(MediaType.APPLICATION_JSON)
-                        // Pastikan Anda menggunakan DTO yang valid di sini
                         .content(objectMapper.writeValueAsString(validUpdateDTO))) 
                 .andExpect(status().isOk()) // Ini akan pass
                 .andExpect(jsonPath("$.status", is(200)))
